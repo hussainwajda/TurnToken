@@ -1,0 +1,7 @@
+fastapi>=0.120
+uvicorn[standard]>=0.38
+supabase>=2.22
+pydantic>=2.12
+pydantic-settings>=2.12
+python-dotenv>=1.1
+pywebpush>=2.0
