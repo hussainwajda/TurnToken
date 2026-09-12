@@ -14,7 +14,9 @@ from datetime import datetime, timezone
 
 from supabase import Client
 
+from app.config import get_settings
 from app.services.push import send_push_to_token
+from app.services.realtime import notify_business
 
 logger = logging.getLogger("turn_token.state_machine")
 
@@ -37,6 +39,8 @@ def sweep_expirations(supabase: Client) -> dict[str, int]:
     ).execute().data or []
 
     for business in businesses:
+        changed = False
+
         called = (
             supabase.table("tokens")
             .select("id,called_at")
@@ -52,6 +56,7 @@ def sweep_expirations(supabase: Client) -> dict[str, int]:
                     {"status": "skipped", "skipped_at": _now()}
                 ).eq("id", token["id"]).execute()
                 skipped_count += 1
+                changed = True
 
         skipped = (
             supabase.table("tokens")
@@ -68,8 +73,16 @@ def sweep_expirations(supabase: Client) -> dict[str, int]:
                     {"status": "expired", "expired_at": _now()}
                 ).eq("id", token["id"]).execute()
                 expired_count += 1
+                changed = True
 
         almost_up_count += _sweep_almost_up(supabase, business)
+
+        # The owner dashboard and the affected customers' tickets never
+        # made these transitions themselves — this is the one place a
+        # queue change happens with no request to hang a broadcast off,
+        # so it's pushed explicitly instead.
+        if changed:
+            notify_business(business["id"], "token_updated")
 
     if skipped_count or expired_count or almost_up_count:
         logger.info(
@@ -123,6 +136,7 @@ def _sweep_almost_up(supabase: Client, business: dict) -> int:
             token["id"],
             title="Almost your turn",
             body=f"Only {tokens_ahead} {'person' if tokens_ahead == 1 else 'people'} ahead of you now.",
+            url=f"{get_settings().frontend_url}/status/{token['id']}",
         )
         supabase.table("notification_log").insert(
             {"token_id": token["id"], "channel": "push", "type": "almost_up"}

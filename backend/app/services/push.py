@@ -16,7 +16,9 @@ from app.config import get_settings
 logger = logging.getLogger("turn_token.push")
 
 
-def send_push_to_token(supabase: Client, token_id: str, title: str, body: str) -> None:
+def send_push_to_token(
+    supabase: Client, token_id: str, title: str, body: str, url: str | None = None
+) -> None:
     settings = get_settings()
     if not settings.vapid_private_key:
         return
@@ -30,6 +32,10 @@ def send_push_to_token(supabase: Client, token_id: str, title: str, body: str) -
         or []
     )
 
+    payload = {"title": title, "body": body}
+    if url:
+        payload["url"] = url
+
     for sub in subs:
         try:
             webpush(
@@ -37,7 +43,7 @@ def send_push_to_token(supabase: Client, token_id: str, title: str, body: str) -
                     "endpoint": sub["endpoint"],
                     "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
                 },
-                data=json.dumps({"title": title, "body": body}),
+                data=json.dumps(payload),
                 vapid_private_key=settings.vapid_private_key,
                 vapid_claims={"sub": f"mailto:{settings.vapid_contact_email}"},
             )

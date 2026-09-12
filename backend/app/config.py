@@ -8,12 +8,34 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     supabase_anon_key: str = ""
     cors_origins: list[str] = ["http://localhost:3000"]
+    frontend_url: str = "http://localhost:3000"
 
     vapid_public_key: str = ""
     vapid_private_key: str = ""
     vapid_contact_email: str = "notifications@turn-token.app"
 
+    # Exactly one process should run the no-show sweep (see
+    # app/main.py::_sweep_loop). Set to false on every worker but one if
+    # the backend ever runs with more than a single process.
+    run_state_machine: bool = True
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    def require_configured(self) -> None:
+        """Fail loudly at startup instead of booting into a state where
+        every request silently 500s because the Supabase client has
+        nothing to talk to."""
+        missing = []
+        if not self.supabase_url:
+            missing.append("SUPABASE_URL")
+        if not self.supabase_service_role_key and not self.supabase_anon_key:
+            missing.append("SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY)")
+        if missing:
+            raise RuntimeError(
+                "Missing required environment variable(s): "
+                + ", ".join(missing)
+                + ". Copy backend/.env.example to backend/.env and fill them in."
+            )
 
 
 @lru_cache

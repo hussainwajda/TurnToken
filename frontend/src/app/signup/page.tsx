@@ -1,25 +1,20 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Field } from "@/components/Field";
 import { Button } from "@/components/Button";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
+import { useSession } from "@/lib/supabase/useSession";
+import { savePendingBusiness } from "@/lib/pendingBusiness";
+import { BUSINESS_CATEGORIES } from "@/lib/constants";
 import type { BusinessCreateInput } from "@/lib/types";
-
-const CATEGORIES = [
-  "Salon",
-  "Clinic",
-  "Repair shop",
-  "Service counter",
-  "Other",
-];
 
 const DEFAULTS: BusinessCreateInput = {
   name: "",
-  category: CATEGORIES[0],
+  category: BUSINESS_CATEGORIES[0],
   contact_email: "",
   contact_phone: "",
   grace_timer_minutes: 5,
@@ -31,11 +26,35 @@ const DEFAULTS: BusinessCreateInput = {
 
 export default function SignupPage() {
   const router = useRouter();
+  const { session, loading: sessionLoading } = useSession();
   const [form, setForm] = useState<BusinessCreateInput>(DEFAULTS);
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
+  const [checkingBusiness, setCheckingBusiness] = useState(true);
+
+  // A signed-in visitor landing here (back button, a stale tab, a re-click
+  // of an old confirmation email) already has an account. If they also
+  // already have a business, this form would just fail the duplicate check
+  // below, so send them straight to their dashboard instead.
+  useEffect(() => {
+    if (sessionLoading || !session) return;
+    let active = true;
+    api
+      .getMyBusiness(session.access_token)
+      .then((business) => {
+        if (active) router.replace(`/dashboard/${business.id}`);
+      })
+      .catch(() => {
+        if (active) setCheckingBusiness(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session, sessionLoading, router]);
+
+  const checkingExisting = sessionLoading || (Boolean(session) && checkingBusiness);
 
   function update<K extends keyof BusinessCreateInput>(
     key: K,
@@ -49,9 +68,32 @@ export default function SignupPage() {
     setSubmitting(true);
     setError(null);
 
+    const cleanForm: BusinessCreateInput = {
+      ...form,
+      contact_email: form.contact_email.trim().toLowerCase(),
+      contact_phone: form.contact_phone?.trim() || undefined,
+    };
+
+    // Already signed in (see the effect above) but without a business yet —
+    // skip auth entirely and go straight to creating the business.
+    if (session) {
+      try {
+        const business = await api.createBusiness(cleanForm, session.access_token);
+        router.push(`/dashboard/${business.id}`);
+      } catch (err) {
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Couldn't set up your business. Check that the backend is running and try again.",
+        );
+        setSubmitting(false);
+      }
+      return;
+    }
+
     const supabase = createClient();
     const { data, error: authError } = await supabase.auth.signUp({
-      email: form.contact_email,
+      email: cleanForm.contact_email,
       password,
     });
 
@@ -61,21 +103,46 @@ export default function SignupPage() {
       return;
     }
 
+    // Supabase returns success with no error for an email that's already
+    // registered (so the response can't be used to enumerate accounts) —
+    // it hands back the existing user with an empty `identities` array
+    // instead. Left unchecked, this form would show "check your email"
+    // for a shop that already exists, which is exactly the duplicate-signup
+    // bug this guards against.
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setError(
+        "An account with this email already exists. Log in instead.",
+      );
+      setSubmitting(false);
+      return;
+    }
+
     if (!data.session) {
+      savePendingBusiness(cleanForm);
       setCheckEmail(true);
       setSubmitting(false);
       return;
     }
 
     try {
-      const business = await api.createBusiness(form, data.session.access_token);
+      const business = await api.createBusiness(cleanForm, data.session.access_token);
       router.push(`/dashboard/${business.id}`);
-    } catch {
+    } catch (err) {
       setError(
-        "Your account was created, but we couldn't set up your business. Check that the backend is running and try logging in.",
+        err instanceof ApiError
+          ? err.message
+          : "Your account was created, but we couldn't set up your business. Check that the backend is running and try logging in.",
       );
       setSubmitting(false);
     }
+  }
+
+  if (checkingExisting) {
+    return (
+      <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+        <p className="text-[0.9375rem] text-ink-soft">One moment…</p>
+      </div>
+    );
   }
 
   if (checkEmail) {
@@ -121,7 +188,7 @@ export default function SignupPage() {
             onChange={(e) => update("category", e.target.value)}
             className="rounded-[8px] border border-line bg-cream px-4 py-3 text-ink focus:outline-none focus:border-pine focus:ring-2 focus:ring-pine/30"
           >
-            {CATEGORIES.map((category) => (
+            {BUSINESS_CATEGORIES.map((category) => (
               <option key={category} value={category}>
                 {category}
               </option>
@@ -139,16 +206,18 @@ export default function SignupPage() {
           placeholder="owner@rubynails.com"
         />
 
-        <Field
-          label="Password"
-          name="password"
-          type="password"
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 6 characters"
-        />
+        {session ? null : (
+          <Field
+            label="Password"
+            name="password"
+            type="password"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="At least 6 characters"
+          />
+        )}
 
         <Field
           label="Contact phone (optional)"
@@ -185,7 +254,7 @@ export default function SignupPage() {
             }
           />
           <Field
-            label="Active counters"
+            label="Counters to start with"
             name="active_counters"
             type="number"
             min={1}
@@ -207,7 +276,7 @@ export default function SignupPage() {
             }
           />
           <Field
-            label="\"Almost up\" alert (positions ahead)"
+            label='"Almost up" alert (positions ahead)'
             name="almost_up_threshold"
             type="number"
             min={0}

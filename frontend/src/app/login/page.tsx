@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Field } from "@/components/Field";
 import { Button } from "@/components/Button";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
+import { clearPendingBusiness, readPendingBusiness } from "@/lib/pendingBusiness";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,8 +36,46 @@ export default function LoginPage() {
     try {
       const business = await api.getMyBusiness(data.session.access_token);
       router.push(`/dashboard/${business.id}`);
-    } catch {
+      return;
+    } catch (err) {
+      // Only a 404 ("no business yet") should fall through to the pending-
+      // signup check below. Any other failure (backend down, 401, ...) is
+      // a real problem — surfacing it here beats silently trying to create
+      // a second business from a stale pending draft.
+      if (!(err instanceof ApiError) || err.status !== 404) {
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Logged in, but couldn't reach the backend. Try again in a moment.",
+        );
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    const pending = readPendingBusiness();
+    if (!pending) {
       router.push("/signup");
+      return;
+    }
+
+    try {
+      const business = await api.createBusiness(pending, data.session.access_token);
+      clearPendingBusiness();
+      router.push(`/dashboard/${business.id}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        // Someone else already claimed this email/phone, or a business
+        // was already created for this account from a previous run of
+        // this same flow — the stale draft is no longer actionable.
+        clearPendingBusiness();
+      }
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Your account is confirmed, but we couldn't finish setting up your business. Check that the backend is running and try again.",
+      );
+      setSubmitting(false);
     }
   }
 

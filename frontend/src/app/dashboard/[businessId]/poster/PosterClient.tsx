@@ -8,6 +8,7 @@ import type { Business } from "@/lib/types";
 
 export function PosterClient({ business }: { business: Business }) {
   const [joinUrl, setJoinUrl] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const timeout = setTimeout(
@@ -16,6 +17,18 @@ export function PosterClient({ business }: { business: Business }) {
     );
     return () => clearTimeout(timeout);
   }, [business.id]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [copied]);
+
+  async function copyLink() {
+    if (!joinUrl) return;
+    await navigator.clipboard.writeText(joinUrl);
+    setCopied(true);
+  }
 
   return (
     <div className="mx-auto w-full max-w-[600px] px-6 py-10 sm:px-10">
@@ -45,6 +58,16 @@ export function PosterClient({ business }: { business: Business }) {
             <div className="h-[220px] w-[220px]" />
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={copyLink}
+          disabled={!joinUrl}
+          className="mt-4 text-sm font-semibold text-ink underline decoration-line underline-offset-4 hover:decoration-ink disabled:opacity-50 print:hidden"
+        >
+          {copied ? "Link copied" : "Copy link"}
+        </button>
+
         <p className="mt-8 text-[0.9375rem] leading-[1.55] text-ink-soft">
           Point your phone&apos;s camera at this code to get your ticket.
           No app, no login.
