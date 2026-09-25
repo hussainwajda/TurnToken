@@ -9,7 +9,14 @@ export function useSession() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
+    let supabase: ReturnType<typeof createClient>;
+    try {
+      supabase = createClient();
+    } catch {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     const timeout = setTimeout(async () => {

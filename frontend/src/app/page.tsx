@@ -231,8 +231,17 @@ export default function Home() {
       </section>
 
       <footer className="mt-auto border-t border-line py-8">
-        <div className="mx-auto flex w-full max-w-[960px] flex-col gap-3 px-6 text-sm text-ink-soft sm:flex-row sm:items-center sm:justify-between sm:px-10">
-          <span>Turn-Token</span>
+        <div className="mx-auto flex w-full max-w-[960px] flex-wrap items-center justify-between gap-4 px-6 text-sm text-ink-soft sm:px-10">
+          <div className="flex items-center gap-3">
+            <span>Turn-Token</span>
+            <span>·</span>
+            <Link
+              href="/super-admin"
+              className="text-xs font-semibold text-pine underline decoration-pine/30 hover:decoration-pine"
+            >
+              Super Admin
+            </Link>
+          </div>
           <span>QR based smart queue management for local businesses</span>
           <Link href="/login" className="hover:text-ink">
             Log in

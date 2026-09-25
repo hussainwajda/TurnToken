@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import analytics, business, counters, push, queue, services, token, ws
+from app.routers import admin, analytics, business, counters, push, queue, services, token, ws
 from app.services.realtime import hub
 from app.services.state_machine import sweep_expirations
 from app.supabase_client import get_supabase
@@ -59,6 +59,7 @@ app.include_router(queue.router)
 app.include_router(analytics.router)
 app.include_router(push.router)
 app.include_router(ws.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")

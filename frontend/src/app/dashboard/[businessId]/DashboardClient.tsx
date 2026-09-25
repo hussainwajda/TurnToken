@@ -160,6 +160,12 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
           <p className="mt-1 text-sm text-ink-soft">{business.category}</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="hidden text-sm font-semibold text-ink underline sm:inline"
+          >
+            Register another
+          </Link>
           <Link href={`/dashboard/${business.id}/services`}>
             <Button variant="ghost" className="text-sm">
               Services
@@ -183,6 +189,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
           <Button variant="ghost" className="text-sm" onClick={handleLogout}>
             Log out
           </Button>
+        </div>
         </div>
       </header>
 

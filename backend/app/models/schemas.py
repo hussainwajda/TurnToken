@@ -245,3 +245,50 @@ class AnalyticsResponse(BaseModel):
     no_show_rate: float
     waiting_now: int
     top_services: list[ServiceBreakdown] = Field(default_factory=list)
+
+
+class AdminOverviewResponse(BaseModel):
+    total_businesses: int
+    active_businesses: int
+    paused_businesses: int
+    total_tokens_today: int
+    waiting_now: int
+    called_now: int
+    serving_now: int
+    done_today: int
+    skipped_today: int
+    expired_today: int
+    no_show_rate_today: float
+    average_wait_minutes_today: float
+    category_counts: dict[str, int]
+
+
+class AdminBusinessItem(Business):
+    waiting_count: int = 0
+    called_position: int | None = None
+    total_tokens_today: int = 0
+    done_today: int = 0
+    expired_today: int = 0
+
+
+class AdminActivityItem(BaseModel):
+    token_id: str
+    business_id: str
+    business_name: str
+    position: int
+    status: TokenStatus
+    created_at: datetime
+    called_at: datetime | None = None
+    served_at: datetime | None = None
+    skipped_at: datetime | None = None
+    expired_at: datetime | None = None
+
+
+class AdminVerifyRequest(BaseModel):
+    passcode: str | None = None
+
+
+class AdminVerifyResponse(BaseModel):
+    valid: bool
+    auth_method: str
+    email: str | None = None
