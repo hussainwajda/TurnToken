@@ -23,7 +23,7 @@ def get_queue(business_id: str, user_id: str = Depends(get_current_user_id)) -> 
     )
     if not business_row or not business_row.data:
         raise HTTPException(status_code=404, detail="Business not found")
-    default_minutes = business_row.data["default_service_time_minutes"]
+    default_minutes = business_row.data.get("default_service_time_minutes") or 10
 
     active = (
         supabase.table("tokens")

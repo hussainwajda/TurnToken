@@ -8,7 +8,12 @@ import { Button } from "@/components/Button";
 import { ApiError, api } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useSession } from "@/lib/supabase/useSession";
-import { savePendingBusiness } from "@/lib/pendingBusiness";
+import {
+  clearPendingBusiness,
+  readPendingBusiness,
+  readPendingBusinessFromUser,
+  savePendingBusiness,
+} from "@/lib/pendingBusiness";
 import { BUSINESS_CATEGORIES } from "@/lib/constants";
 import type { BusinessCreateInput } from "@/lib/types";
 
@@ -38,6 +43,14 @@ export default function SignupPage() {
   // of an old confirmation email) already has an account. If they also
   // already have a business, this form would just fail the duplicate check
   // below, so send them straight to their dashboard instead.
+  //
+  // A visitor who just confirmed their email also lands here with a session
+  // but no business yet — the confirmation link frequently opens in a
+  // different browser (a mail app's in-app browser, another device) than
+  // the one the signup form was filled out in, so this finishes the signup
+  // from whatever draft is reachable (this browser's storage, or the copy
+  // stashed in the account's own metadata) instead of asking them to redo
+  // the whole form.
   useEffect(() => {
     if (sessionLoading || !session) return;
     let active = true;
@@ -46,7 +59,40 @@ export default function SignupPage() {
       .then((business) => {
         if (active) router.replace(`/dashboard/${business.id}`);
       })
-      .catch(() => {
+      .catch(async (err) => {
+        if (!active) return;
+        // A 401 here means this browser's cached session no longer
+        // corresponds to a real account (the user behind it was deleted,
+        // a JWT secret rotated, ...). Sign out to drop the stale session
+        // instead of getting stuck showing "Invalid session" with no way
+        // forward — the effect re-runs with session === null and this
+        // becomes a normal logged-out signup.
+        if (err instanceof ApiError && err.status === 401) {
+          await createClient().auth.signOut();
+          return;
+        }
+        if (err instanceof ApiError && err.status === 404) {
+          const pending =
+            readPendingBusiness() ?? readPendingBusinessFromUser(session.user);
+          if (pending) {
+            try {
+              const business = await api.createBusiness(
+                pending,
+                session.access_token,
+              );
+              clearPendingBusiness();
+              if (active) router.replace(`/dashboard/${business.id}`);
+              return;
+            } catch (createErr) {
+              if (createErr instanceof ApiError && createErr.status === 401) {
+                await createClient().auth.signOut();
+                return;
+              }
+              clearPendingBusiness();
+              // Fall through to the blank form below.
+            }
+          }
+        }
         if (active) setCheckingBusiness(false);
       });
     return () => {
@@ -81,6 +127,15 @@ export default function SignupPage() {
         const business = await api.createBusiness(cleanForm, session.access_token);
         router.push(`/dashboard/${business.id}`);
       } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          // Stale/invalid session (e.g. the account behind it is gone) —
+          // sign out so this becomes a normal logged-out signup instead of
+          // a dead end, and let the user submit again as a new account.
+          await createClient().auth.signOut();
+          setError("Your session had expired. Please sign up again.");
+          setSubmitting(false);
+          return;
+        }
         setError(
           err instanceof ApiError
             ? err.message
@@ -95,6 +150,14 @@ export default function SignupPage() {
     const { data, error: authError } = await supabase.auth.signUp({
       email: cleanForm.contact_email,
       password,
+      options: {
+        // The confirmation link often opens in a different browser than the
+        // one used to fill this form (a mail app's in-app browser, another
+        // device, ...), where `savePendingBusiness` below is invisible. Also
+        // stashing the draft in the user's own auth metadata means it's
+        // still there however they come back to confirm and log in.
+        data: { pending_business: cleanForm },
+      },
     });
 
     if (authError) {

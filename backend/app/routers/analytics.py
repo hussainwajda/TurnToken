@@ -34,16 +34,17 @@ def get_analytics(
         or []
     )
 
-    served_today = [t for t in today_tokens if t["status"] == "done" and t["served_at"]]
+    served_today = [t for t in today_tokens if t.get("status") == "done" and t.get("served_at")]
     wait_minutes = [
         (datetime.fromisoformat(t["served_at"]) - datetime.fromisoformat(t["created_at"])).total_seconds()
         / 60
         for t in served_today
+        if t.get("created_at")
     ]
     average_wait_minutes = round(sum(wait_minutes) / len(wait_minutes), 1) if wait_minutes else 0.0
 
     hour_counts = Counter(
-        datetime.fromisoformat(t["created_at"]).hour for t in today_tokens
+        datetime.fromisoformat(t["created_at"]).hour for t in today_tokens if t.get("created_at")
     )
     peak_hour = max(hour_counts, key=lambda h: hour_counts[h]) if hour_counts else None
 

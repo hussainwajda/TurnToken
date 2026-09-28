@@ -2,8 +2,10 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+import httpx
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routers import analytics, business, counters, push, queue, services, token, ws
@@ -13,6 +15,17 @@ from app.supabase_client import get_supabase
 
 settings = get_settings()
 settings.require_configured()
+
+# Without this, app-level `logger.info(...)` calls (e.g. the push delivery
+# trail in app/services/push.py) are silently dropped: nothing in this
+# codebase calls basicConfig, so the root logger has no handler and only
+# WARNING+ records reach the terminal via Python's last-resort handler.
+#
+# Root stays at WARNING — only the "turn_token" namespace is bumped to INFO
+# — so this doesn't also switch on httpx's per-request INFO logging (every
+# Supabase REST call) and bury the one line you're actually looking for.
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+logging.getLogger("turn_token").setLevel(logging.INFO)
 logger = logging.getLogger("turn_token")
 
 SWEEP_INTERVAL_SECONDS = 15
@@ -50,6 +63,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(httpx.TransportError)
+async def httpx_transport_exception_handler(request, exc: httpx.TransportError):
+    logger.warning("Supabase connection error on %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database connection temporarily unavailable. Please retry."},
+    )
 
 app.include_router(business.router)
 app.include_router(services.router)

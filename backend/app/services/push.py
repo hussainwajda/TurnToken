@@ -21,6 +21,13 @@ def send_push_to_token(
 ) -> None:
     settings = get_settings()
     if not settings.vapid_private_key:
+        # Previously a silent no-op — logged so a missing/stale VAPID key
+        # (e.g. added to .env after the server was already running; uvicorn
+        # --reload only watches .py files, not .env) shows up somewhere
+        # instead of looking like push just isn't firing for no reason.
+        logger.warning(
+            "skipping push for token %s: VAPID_PRIVATE_KEY not configured", token_id
+        )
         return
 
     subs = (
@@ -31,6 +38,9 @@ def send_push_to_token(
         .data
         or []
     )
+    if not subs:
+        logger.info("no push subscriptions for token %s, nothing to send", token_id)
+        return
 
     payload = {"title": title, "body": body}
     if url:
@@ -47,6 +57,7 @@ def send_push_to_token(
                 vapid_private_key=settings.vapid_private_key,
                 vapid_claims={"sub": f"mailto:{settings.vapid_contact_email}"},
             )
+            logger.info("push delivered for token %s to subscription %s", token_id, sub["id"])
         except WebPushException as exc:
             logger.warning("push delivery failed for token %s: %s", token_id, exc)
             if exc.response is not None and exc.response.status_code in (404, 410):

@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "node scripts/dev.js",
     "dev:frontend": "npm run dev --prefix frontend",
-    "dev:backend": "cd backend && .venv\\Scripts\\python.exe -m uvicorn app.main:app --reload",
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\""
+    "dev:backend": "node scripts/dev.js --backend-only"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

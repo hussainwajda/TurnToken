@@ -16,9 +16,16 @@ QR based smart queue management for local businesses. See `PRD_Turn_Token.md` fo
 
 ## Running locally
 
+Run both frontend and backend concurrently with automatic OS detection (Windows, macOS, Linux):
+
+```bash
+npm run dev
 ```
-cd backend && .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
-cd frontend && npm run dev
+
+Or run individual services:
+```bash
+npm run dev:backend   # Starts FastAPI backend with auto-reload
+npm run dev:frontend  # Starts Next.js frontend
 ```
 
 ## What's implemented so far

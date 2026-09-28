@@ -7,7 +7,11 @@ import { Field } from "@/components/Field";
 import { Button } from "@/components/Button";
 import { ApiError, api } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
-import { clearPendingBusiness, readPendingBusiness } from "@/lib/pendingBusiness";
+import {
+  clearPendingBusiness,
+  readPendingBusiness,
+  readPendingBusinessFromUser,
+} from "@/lib/pendingBusiness";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,7 +57,8 @@ export default function LoginPage() {
       }
     }
 
-    const pending = readPendingBusiness();
+    const pending =
+      readPendingBusiness() ?? readPendingBusinessFromUser(data.session.user);
     if (!pending) {
       router.push("/signup");
       return;
