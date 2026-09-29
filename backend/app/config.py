@@ -1,5 +1,6 @@
 from functools import lru_cache
-
+import json
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,6 +10,9 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""
     cors_origins: list[str] = ["http://localhost:3000"]
     frontend_url: str = "http://localhost:3000"
+
+    super_admin_passcode: str = "turntoken-admin-2026"
+    super_admin_emails: list[str] = ["admin@turn-token.app", "hussain@turn-token.app"]
 
     vapid_public_key: str = ""
     vapid_private_key: str = ""
@@ -36,6 +40,21 @@ class Settings(BaseSettings):
                 + ", ".join(missing)
                 + ". Copy backend/.env.example to backend/.env and fill them in."
             )
+
+    @field_validator("super_admin_emails", mode="before")
+    @classmethod
+    def parse_admin_emails(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [email.strip() for email in v.split(",") if email.strip()]
+        return v
 
 
 @lru_cache

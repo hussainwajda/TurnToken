@@ -1,4 +1,9 @@
 import type {
+  AdminActivityItem,
+  AdminAuth,
+  AdminBusinessItem,
+  AdminOverview,
+  AdminVerifyResponse,
   AnalyticsResponse,
   Business,
   BusinessCreateInput,
@@ -34,14 +39,15 @@ export class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  init?: RequestInit & { accessToken?: string },
+  init?: RequestInit & { accessToken?: string; adminPasscode?: string },
 ): Promise<T> {
-  const { accessToken, ...rest } = init ?? {};
+  const { accessToken, adminPasscode, ...rest } = init ?? {};
   const res = await fetch(`${API_URL}${path}`, {
     ...rest,
     headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(adminPasscode ? { "X-Admin-Passcode": adminPasscode } : {}),
       ...rest.headers,
     },
     cache: "no-store",
@@ -200,4 +206,66 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  // Super Admin Endpoints
+  verifyAdmin: (auth: AdminAuth) =>
+    request<AdminVerifyResponse>("/api/admin/verify", {
+      method: "POST",
+      body: JSON.stringify({ passcode: auth.passcode }),
+      accessToken: auth.accessToken,
+      adminPasscode: auth.passcode,
+    }),
+
+  getAdminOverview: (auth: AdminAuth) =>
+    request<AdminOverview>("/api/admin/overview", {
+      accessToken: auth.accessToken,
+      adminPasscode: auth.passcode,
+    }),
+
+  getAdminBusinesses: (auth: AdminAuth) =>
+    request<AdminBusinessItem[]>("/api/admin/businesses", {
+      accessToken: auth.accessToken,
+      adminPasscode: auth.passcode,
+    }),
+
+  getAdminBusinessQueue: (businessId: string, auth: AdminAuth) =>
+    request<QueueResponse>(`/api/admin/businesses/${businessId}/queue`, {
+      accessToken: auth.accessToken,
+      adminPasscode: auth.passcode,
+    }),
+
+  updateAdminBusiness: (
+    businessId: string,
+    payload: BusinessUpdateInput,
+    auth: AdminAuth,
+  ) =>
+    request<Business>(`/api/admin/businesses/${businessId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+      accessToken: auth.accessToken,
+      adminPasscode: auth.passcode,
+    }),
+
+  toggleAdminBusinessPause: (businessId: string, auth: AdminAuth) =>
+    request<Business>(`/api/admin/businesses/${businessId}/toggle-pause`, {
+      method: "POST",
+      accessToken: auth.accessToken,
+      adminPasscode: auth.passcode,
+    }),
+
+  getAdminActivity: (auth: AdminAuth, limit = 50) =>
+    request<AdminActivityItem[]>(`/api/admin/activity?limit=${limit}`, {
+      accessToken: auth.accessToken,
+      adminPasscode: auth.passcode,
+    }),
+
+  resetAdminBusinessQueue: (businessId: string, auth: AdminAuth) =>
+    request<{ business_id: string; cancelled_count: number }>(
+      `/api/admin/businesses/${businessId}/queue/reset`,
+      {
+        method: "POST",
+        accessToken: auth.accessToken,
+        adminPasscode: auth.passcode,
+      },
+    ),
 };

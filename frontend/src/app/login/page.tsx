@@ -26,6 +26,11 @@ export default function LoginPage() {
     setError(null);
 
     const supabase = createClient();
+    if (!supabase) {
+      setError("Supabase client is not configured. Check your environment settings.");
+      setSubmitting(false);
+      return;
+    }
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,

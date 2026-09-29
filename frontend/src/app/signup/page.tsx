@@ -147,6 +147,11 @@ export default function SignupPage() {
     }
 
     const supabase = createClient();
+    if (!supabase) {
+      setError("Supabase client is not configured. Check your environment settings.");
+      setSubmitting(false);
+      return;
+    }
     const { data, error: authError } = await supabase.auth.signUp({
       email: cleanForm.contact_email,
       password,
@@ -339,7 +344,7 @@ export default function SignupPage() {
             }
           />
           <Field
-            label='"Almost up" alert (positions ahead)'
+            label={'"Almost up" alert (positions ahead)'}
             name="almost_up_threshold"
             type="number"
             min={0}

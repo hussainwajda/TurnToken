@@ -140,3 +140,51 @@ export interface AnalyticsResponse {
   waiting_now: number;
   top_services: ServiceBreakdown[];
 }
+
+export interface AdminOverview {
+  total_businesses: number;
+  active_businesses: number;
+  paused_businesses: number;
+  total_tokens_today: number;
+  waiting_now: number;
+  called_now: number;
+  serving_now: number;
+  done_today: number;
+  skipped_today: number;
+  expired_today: number;
+  no_show_rate_today: number;
+  average_wait_minutes_today: number;
+  category_counts: Record<string, number>;
+}
+
+export interface AdminBusinessItem extends Business {
+  waiting_count: number;
+  called_position: number | null;
+  total_tokens_today: number;
+  done_today: number;
+  expired_today: number;
+}
+
+export interface AdminActivityItem {
+  token_id: string;
+  business_id: string;
+  business_name: string;
+  position: number;
+  status: TokenStatus;
+  created_at: string;
+  called_at: string | null;
+  served_at: string | null;
+  skipped_at: string | null;
+  expired_at: string | null;
+}
+
+export interface AdminAuth {
+  passcode?: string;
+  accessToken?: string;
+}
+
+export interface AdminVerifyResponse {
+  valid: boolean;
+  auth_method: "passcode" | "email";
+  email: string | null;
+}
