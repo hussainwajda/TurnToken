@@ -190,7 +190,6 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
             Log out
           </Button>
         </div>
-        </div>
       </header>
 
       {business.is_paused ? (

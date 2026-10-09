@@ -437,7 +437,8 @@ export function SuperAdminDashboard() {
       const queue = await api.getAdminBusinessQueue(b.id, activeAuth).catch(() => {
         return {
           business_id: b.id,
-          tokens: [
+          counters: [],
+          waiting: [
             {
               id: `${b.id}-t1`,
               business_id: b.id,
@@ -449,6 +450,9 @@ export function SuperAdminDashboard() {
               skipped_at: null,
               expired_at: null,
               restored_at: null,
+              estimated_wait_minutes: null,
+              services: [],
+              counter_id: null,
             },
             {
               id: `${b.id}-t2`,
@@ -461,6 +465,9 @@ export function SuperAdminDashboard() {
               skipped_at: null,
               expired_at: null,
               restored_at: null,
+              estimated_wait_minutes: null,
+              services: [],
+              counter_id: null,
             },
             {
               id: `${b.id}-t3`,
@@ -473,9 +480,12 @@ export function SuperAdminDashboard() {
               skipped_at: null,
               expired_at: null,
               restored_at: null,
+              estimated_wait_minutes: null,
+              services: [],
+              counter_id: null,
             },
           ],
-          currently_serving: null,
+          skipped: [],
         };
       });
       setQueueModalData(queue);
@@ -501,10 +511,10 @@ export function SuperAdminDashboard() {
     try {
       const res = await api.resetAdminBusinessQueue(queueModalBusiness.id, activeAuth).catch(() => ({
         business_id: queueModalBusiness.id,
-        cancelled_count: queueModalData?.tokens.length ?? 3,
+        cancelled_count: queueModalData ? (queueModalData.waiting.length + queueModalData.skipped.length) : 3,
       }));
       showBanner(`Cancelled ${res.cancelled_count} active tokens for this shop.`);
-      setQueueModalData({ business_id: queueModalBusiness.id, tokens: [], currently_serving: null });
+      setQueueModalData({ business_id: queueModalBusiness.id, counters: [], waiting: [], skipped: [] });
       setBusinesses((prev) =>
         prev.map((item) =>
           item.id === queueModalBusiness.id
@@ -529,7 +539,6 @@ export function SuperAdminDashboard() {
       contact_phone: b.contact_phone ?? "",
       grace_timer_minutes: b.grace_timer_minutes,
       hold_window_minutes: b.hold_window_minutes,
-      active_counters: b.active_counters,
       default_service_time_minutes: b.default_service_time_minutes,
       almost_up_threshold: b.almost_up_threshold,
     });
@@ -1293,46 +1302,64 @@ export function SuperAdminDashboard() {
             </div>
 
             <div className="mt-4 flex-1 overflow-y-auto pr-1">
-              {loadingQueue ? (
-                <div className="py-12 text-center text-sm text-ink-soft">
-                  Loading live queue…
-                </div>
-              ) : !queueModalData || queueModalData.tokens.length === 0 ? (
-                <div className="py-12 text-center text-sm text-ink-soft">
-                  No active or waiting tokens in this queue right now.
-                </div>
-              ) : (
-                <div className="flex flex-col divide-y divide-line">
-                  {queueModalData.tokens.map((token) => {
-                    const badge = STATUS_BADGE[token.status] || STATUS_BADGE.waiting;
-                    return (
-                      <div
-                        key={token.id}
-                        className="flex items-center justify-between py-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="font-display text-xl font-[560] tabular-nums text-ink">
-                            #{String(token.position).padStart(3, "0")}
-                          </span>
-                          <span className={`rounded-[5px] px-2 py-0.5 text-xs font-semibold ${badge.className}`}>
-                            {badge.label}
-                          </span>
+              {(() => {
+                const allTokens = queueModalData
+                  ? [
+                      ...queueModalData.counters.map((c) => c.current_token).filter(Boolean),
+                      ...queueModalData.waiting,
+                      ...queueModalData.skipped,
+                    ]
+                  : [];
+
+                if (loadingQueue) {
+                  return (
+                    <div className="py-12 text-center text-sm text-ink-soft">
+                      Loading live queue…
+                    </div>
+                  );
+                }
+                if (!queueModalData || allTokens.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-sm text-ink-soft">
+                      No active or waiting tokens in this queue right now.
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex flex-col divide-y divide-line">
+                    {allTokens.map((token: any) => {
+                      const badge = STATUS_BADGE[token.status as TokenStatus] || STATUS_BADGE.waiting;
+                      return (
+                        <div
+                          key={token.id}
+                          className="flex items-center justify-between py-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="font-display text-xl font-[560] tabular-nums text-ink">
+                              #{String(token.position).padStart(3, "0")}
+                            </span>
+                            <span
+                              className={`rounded-[5px] px-2 py-0.5 text-xs font-semibold ${badge.className}`}
+                            >
+                              {badge.label}
+                            </span>
+                          </div>
+                          <div className="text-xs text-ink-soft">
+                            Joined {formatRelativeTime(token.created_at)}
+                          </div>
                         </div>
-                        <div className="text-xs text-ink-soft">
-                          Joined {formatRelativeTime(token.created_at)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="mt-6 flex items-center justify-between border-t border-line pt-4">
               <Button
                 variant="danger"
                 className="text-xs"
-                disabled={resettingQueue || !queueModalData?.tokens.length}
+                disabled={resettingQueue || !queueModalData || (queueModalData.waiting.length === 0 && queueModalData.skipped.length === 0)}
                 onClick={handleResetQueue}
               >
                 {resettingQueue ? "Resetting Line…" : "Emergency Reset Line (Cancel All)"}
@@ -1439,17 +1466,6 @@ export function SuperAdminDashboard() {
                     value={editForm.hold_window_minutes ?? 15}
                     onChange={(e) =>
                       setEditForm({ ...editForm, hold_window_minutes: Number(e.target.value) })
-                    }
-                  />
-                  <Field
-                    label="Active Counters"
-                    name="active_counters"
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={editForm.active_counters ?? 1}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, active_counters: Number(e.target.value) })
                     }
                   />
                   <Field
