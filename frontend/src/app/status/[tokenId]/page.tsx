@@ -4,6 +4,8 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { TicketCard } from "@/components/TicketCard";
 import { Button } from "@/components/Button";
+import { useLocale, useT } from "@/i18n/LocaleProvider";
+import type { MessageKey } from "@/i18n/translate";
 import { api } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { buildWhatsAppLink, tokenNotifyMessage } from "@/lib/whatsapp";
@@ -13,16 +15,16 @@ const POLL_MS = 20000; // fallback only — see useLiveRefresh
 
 const STATUS_COPY: Record<
   TokenStatus,
-  { label: string; accent: "pine" | "marigold" | "terracotta" }
+  { label: MessageKey; accent: "pine" | "marigold" | "terracotta" }
 > = {
-  waiting: { label: "Waiting in line", accent: "pine" },
-  called: { label: "Called — head to the counter", accent: "marigold" },
-  serving: { label: "You're being served", accent: "marigold" },
-  done: { label: "Served — thank you", accent: "pine" },
-  skipped: { label: "Skipped — return soon to keep your place", accent: "terracotta" },
-  restored: { label: "Restored — you're back in line", accent: "pine" },
-  expired: { label: "This ticket has expired", accent: "terracotta" },
-  cancelled: { label: "Ticket cancelled", accent: "terracotta" },
+  waiting: { label: "status.waiting", accent: "pine" },
+  called: { label: "status.called", accent: "marigold" },
+  serving: { label: "status.serving", accent: "marigold" },
+  done: { label: "status.done", accent: "pine" },
+  skipped: { label: "status.skipped", accent: "terracotta" },
+  restored: { label: "status.restored", accent: "pine" },
+  expired: { label: "status.expired", accent: "terracotta" },
+  cancelled: { label: "status.cancelled", accent: "terracotta" },
 };
 
 const accentClass = {
@@ -44,6 +46,8 @@ export default function StatusPage({
   params,
 }: PageProps<"/status/[tokenId]">) {
   const { tokenId } = use(params);
+  const t = useT();
+  const { formatNumber } = useLocale();
   const [data, setData] = useState<TokenStatusResponse | null>(null);
   const [error, setError] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -180,7 +184,7 @@ export default function StatusPage({
       await api.cancelToken(tokenId);
       await refresh();
     } catch {
-      setCancelError("Couldn't cancel your ticket. Please try again.");
+      setCancelError(t("status.cancelError"));
     } finally {
       setCancelling(false);
     }
@@ -190,7 +194,7 @@ export default function StatusPage({
     return (
       <Center>
         <p className="text-[0.9375rem] text-ink-soft">
-          We couldn&apos;t find this ticket. It may have expired.
+          {t("status.notFound")}
         </p>
       </Center>
     );
@@ -199,7 +203,7 @@ export default function StatusPage({
   if (!data) {
     return (
       <Center>
-        <p className="text-[0.9375rem] text-ink-soft">Loading your ticket…</p>
+        <p className="text-[0.9375rem] text-ink-soft">{t("status.loading")}</p>
       </Center>
     );
   }
@@ -212,7 +216,7 @@ export default function StatusPage({
     <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col items-center justify-center px-6 py-16">
       <TicketCard className="w-full">
         <p className={`text-center text-[0.8125rem] font-semibold tracking-[0.01em] ${accentClass[status.accent]}`}>
-          {status.label}
+          {t(status.label)}
         </p>
         <p className="mt-4 text-center font-display text-[clamp(4rem,22vw,8rem)] font-[560] leading-[0.95] tracking-[-0.02em] tabular-nums text-ink">
           {String(data.position_in_queue).padStart(3, "0")}
@@ -220,15 +224,19 @@ export default function StatusPage({
         {isActive ? (
           <p className="mt-4 text-center text-sm text-ink-soft">
             {data.tokens_ahead === 0
-              ? "You're next"
-              : `${data.tokens_ahead} ${data.tokens_ahead === 1 ? "person" : "people"} ahead`}
-            {" · about "}
-            {Math.max(1, Math.round(data.estimated_wait_minutes))} min
+              ? t("status.next")
+              : data.tokens_ahead === 1
+                ? t("status.aheadOne")
+                : t("status.aheadMany", { n: formatNumber(data.tokens_ahead) })}
+            {" · "}
+            {t("status.about", {
+              n: formatNumber(Math.max(1, Math.round(data.estimated_wait_minutes))),
+            })}
           </p>
         ) : null}
         {data.token.status === "called" && data.counter_label ? (
           <p className="mt-4 text-center text-sm text-ink-soft">
-            Head to <span className="font-semibold text-ink">{data.counter_label}</span>
+            {t("status.headTo", { counter: data.counter_label })}
           </p>
         ) : null}
         {services.length > 0 ? (
@@ -252,14 +260,14 @@ export default function StatusPage({
           href={
             buildWhatsAppLink(
               business.contact_phone,
-              tokenNotifyMessage(business.name, data.position_in_queue),
+              tokenNotifyMessage(t, business.name, data.position_in_queue),
             ) ?? undefined
           }
           target="_blank"
           rel="noopener noreferrer"
           className="mt-3 text-[0.8125rem] text-ink-soft underline decoration-line underline-offset-2 hover:text-ink"
         >
-          Or get notified on WhatsApp
+          {t("status.whatsapp")}
         </a>
       ) : null}
 
@@ -271,7 +279,7 @@ export default function StatusPage({
             disabled={cancelling}
             className="mt-6"
           >
-            {cancelling ? "Cancelling…" : "Cancel my ticket"}
+            {cancelling ? t("status.cancelling") : t("status.cancel")}
           </Button>
           {cancelError ? (
             <p className="mt-2 text-[0.8125rem] text-terracotta">{cancelError}</p>
@@ -283,19 +291,20 @@ export default function StatusPage({
         href="/"
         className="mt-10 text-[0.8125rem] text-ink-soft hover:text-ink"
       >
-        Powered by Turn-Token
+        {t("status.powered")}
       </Link>
     </div>
   );
 }
 
 function PushOptIn({ status, onEnable }: { status: PushStatus; onEnable: () => void }) {
+  const t = useT();
   if (status === "checking" || status === "unsupported") return null;
 
   if (status === "subscribed") {
     return (
       <p className="mt-6 text-center text-[0.8125rem] text-ink-soft">
-        Alerts on — we&apos;ll notify this device when it&apos;s almost your turn.
+        {t("push.on")}
       </p>
     );
   }
@@ -303,8 +312,7 @@ function PushOptIn({ status, onEnable }: { status: PushStatus; onEnable: () => v
   if (status === "denied") {
     return (
       <p className="mt-6 max-w-[38ch] text-center text-[0.8125rem] text-ink-soft">
-        Notifications are blocked in your browser settings. Enable them there
-        to get an alert when it&apos;s almost your turn.
+        {t("push.denied")}
       </p>
     );
   }
@@ -313,10 +321,10 @@ function PushOptIn({ status, onEnable }: { status: PushStatus; onEnable: () => v
     return (
       <div className="mt-6 flex flex-col items-center gap-2">
         <p className="text-[0.8125rem] text-terracotta">
-          Couldn&apos;t turn on alerts.
+          {t("push.error")}
         </p>
         <Button variant="ghost" className="text-sm" onClick={onEnable}>
-          Try again
+          {t("push.retry")}
         </Button>
       </div>
     );
@@ -329,7 +337,7 @@ function PushOptIn({ status, onEnable }: { status: PushStatus; onEnable: () => v
       disabled={status === "subscribing"}
       onClick={onEnable}
     >
-      {status === "subscribing" ? "Enabling…" : "Notify me when it's my turn"}
+      {status === "subscribing" ? t("push.enabling") : t("push.enable")}
     </Button>
   );
 }

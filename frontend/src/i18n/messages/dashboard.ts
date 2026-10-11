@@ -1,0 +1,157 @@
+import type { Message } from "./types";
+
+export const dashboard = {
+  // ── Main dashboard ─────────────────────────────────────────────────
+  "dash.registerAnother": { en: "Register another", hi: "एक और दर्ज करें", mr: "आणखी एक नोंदवा" },
+  "dash.services": { en: "Services", hi: "सेवाएँ", mr: "सेवा" },
+  "dash.counters": { en: "Counters", hi: "काउंटर", mr: "काउंटर" },
+  "dash.settings": { en: "Settings", hi: "सेटिंग", mr: "सेटिंग्ज" },
+  "dash.poster": { en: "View QR poster", hi: "QR पोस्टर देखें", mr: "QR पोस्टर पहा" },
+  "dash.logout": { en: "Log out", hi: "लॉग आउट", mr: "लॉग आउट" },
+  "dash.notFoundBody": {
+    en: "Double check the link, or set up a new shop from the home page.",
+    hi: "लिंक दोबारा जाँचें, या होम पेज से नई दुकान सेट करें।",
+    mr: "लिंक पुन्हा तपासा, किंवा होम पेजवरून नवीन दुकान सेट करा.",
+  },
+  "dash.paused": {
+    en: "Your queue is paused — customers can't join until you resume it.",
+    hi: "आपकी कतार रुकी हुई है — जब तक आप इसे फिर शुरू नहीं करते, ग्राहक जुड़ नहीं सकते।",
+    mr: "तुमची रांग थांबवलेली आहे — तुम्ही ती पुन्हा सुरू करेपर्यंत ग्राहक सामील होऊ शकत नाहीत.",
+  },
+  "dash.serverDown": {
+    en: "Couldn't reach the server for the latest queue — retrying automatically. What's shown below may be out of date.",
+    hi: "ताज़ा कतार के लिए सर्वर तक नहीं पहुँच सके — अपने आप दोबारा कोशिश हो रही है। नीचे दिखाई गई जानकारी पुरानी हो सकती है।",
+    mr: "ताजी रांग मिळवण्यासाठी सर्व्हरशी संपर्क होऊ शकला नाही — आपोआप पुन्हा प्रयत्न होत आहे. खाली दिसणारी माहिती जुनी असू शकते.",
+  },
+  "dash.err.pause": {
+    en: "Couldn't update the queue's pause state.",
+    hi: "कतार की रोक की स्थिति बदली नहीं जा सकी।",
+    mr: "रांगेची थांबवण्याची स्थिती बदलता आली नाही.",
+  },
+  "dash.err.action": {
+    en: "That action didn't go through — please try again.",
+    hi: "वह कार्रवाई नहीं हो सकी — कृपया फिर कोशिश करें।",
+    mr: "ती कृती होऊ शकली नाही — कृपया पुन्हा प्रयत्न करा.",
+  },
+  "dash.err.callNext": {
+    en: "Couldn't call the next customer — please try again.",
+    hi: "अगले ग्राहक को बुलाया नहीं जा सका — कृपया फिर कोशिश करें।",
+    mr: "पुढच्या ग्राहकाला बोलावता आले नाही — कृपया पुन्हा प्रयत्न करा.",
+  },
+  "dash.err.cancel": {
+    en: "Couldn't cancel that ticket — please try again.",
+    hi: "वह टिकट रद्द नहीं हो सका — कृपया फिर कोशिश करें।",
+    mr: "ते तिकीट रद्द करता आले नाही — कृपया पुन्हा प्रयत्न करा.",
+  },
+  "dash.resume": { en: "Resume queue", hi: "कतार फिर शुरू करें", mr: "रांग पुन्हा सुरू करा" },
+  "dash.resuming": { en: "Resuming…", hi: "शुरू हो रही है…", mr: "सुरू होत आहे…" },
+  "dash.pause": { en: "Pause queue", hi: "कतार रोकें", mr: "रांग थांबवा" },
+  "dash.pausing": { en: "Pausing…", hi: "रोक रहे हैं…", mr: "थांबवत आहे…" },
+  "dash.loadingCounters": { en: "Loading counters…", hi: "काउंटर लोड हो रहे हैं…", mr: "काउंटर लोड होत आहेत…" },
+  "dash.noCounters": {
+    en: "No counters set up yet. {link} to start calling customers.",
+    hi: "अभी कोई काउंटर सेट नहीं है। ग्राहकों को बुलाना शुरू करने के लिए {link}।",
+    mr: "अजून कोणताही काउंटर सेट केलेला नाही. ग्राहकांना बोलावणे सुरू करण्यासाठी {link}.",
+  },
+  "dash.addOne": { en: "Add one", hi: "एक जोड़ें", mr: "एक जोडा" },
+  "dash.markServed": { en: "Mark served", hi: "सेवा पूरी करें", mr: "सेवा पूर्ण करा" },
+  "dash.skip": { en: "Skip", hi: "छोड़ें", mr: "वगळा" },
+  "dash.callNext": { en: "Call next", hi: "अगला बुलाएँ", mr: "पुढचा बोलवा" },
+  "dash.noEligible": { en: "No eligible customer waiting", hi: "कोई योग्य ग्राहक इंतज़ार में नहीं", mr: "कोणताही पात्र ग्राहक प्रतीक्षेत नाही" },
+  "dash.waitingCount": { en: "Waiting ({n})", hi: "इंतज़ार में ({n})", mr: "प्रतीक्षेत ({n})" },
+  "dash.loadingQueue": { en: "Loading queue…", hi: "कतार लोड हो रही है…", mr: "रांग लोड होत आहे…" },
+  "dash.noOneWaiting": {
+    en: "No one is waiting. New tickets will show up here the moment a customer scans your poster.",
+    hi: "कोई इंतज़ार में नहीं है। जैसे ही कोई ग्राहक आपका पोस्टर स्कैन करेगा, नए टिकट यहाँ दिखेंगे।",
+    mr: "कोणीही प्रतीक्षेत नाही. ग्राहकाने तुमचे पोस्टर स्कॅन करताच नवीन तिकिटे इथे दिसतील.",
+  },
+  "dash.cancel": { en: "Cancel", hi: "रद्द करें", mr: "रद्द करा" },
+  "dash.skippedHeading": { en: "Skipped — held for restore", hi: "छोड़े गए — वापस जोड़ने के लिए रखे गए", mr: "वगळलेले — परत घेण्यासाठी राखून ठेवलेले" },
+  "dash.restore": { en: "Restore", hi: "वापस जोड़ें", mr: "परत घ्या" },
+  "dash.waiting": { en: "Waiting", hi: "इंतज़ार में", mr: "प्रतीक्षेत" },
+  "dash.today": { en: "Today", hi: "आज", mr: "आज" },
+  "dash.served": { en: "Customers served", hi: "सेवा पाए ग्राहक", mr: "सेवा मिळालेले ग्राहक" },
+  "dash.avgWait": { en: "Avg. wait", hi: "औसत इंतज़ार", mr: "सरासरी प्रतीक्षा" },
+  "dash.peakHour": { en: "Peak hour", hi: "व्यस्त समय", mr: "गर्दीची वेळ" },
+  "dash.noShows": { en: "No-shows", hi: "न आने वाले", mr: "न आलेले" },
+  "dash.topServices": { en: "Top services", hi: "लोकप्रिय सेवाएँ", mr: "लोकप्रिय सेवा" },
+  "dash.avgShort": { en: "{count} · {n}m avg", hi: "{count} · औसत {n} मि.", mr: "{count} · सरासरी {n} मि." },
+  "dash.general": { en: "General", hi: "सामान्य", mr: "सामान्य" },
+
+  // ── Settings page ──────────────────────────────────────────────────
+  "settings.title": { en: "Shop settings", hi: "दुकान की सेटिंग", mr: "दुकानाची सेटिंग्ज" },
+  "settings.intro": {
+    en: "Change how your queue is configured. Updates apply to new tickets immediately. Manage your {counters} and {services} from their own pages.",
+    hi: "अपनी कतार की व्यवस्था बदलें। बदलाव नए टिकटों पर तुरंत लागू होते हैं। अपने {counters} और {services} उनके अपने पेज से सँभालें।",
+    mr: "तुमच्या रांगेची मांडणी बदला. बदल नवीन तिकिटांना लगेच लागू होतात. तुमचे {counters} आणि {services} त्यांच्या स्वतंत्र पेजवरून सांभाळा.",
+  },
+  "settings.countersLink": { en: "counters", hi: "काउंटर", mr: "काउंटर" },
+  "settings.servicesLink": { en: "services", hi: "सेवाएँ", mr: "सेवा" },
+  "settings.save": { en: "Save changes", hi: "बदलाव सहेजें", mr: "बदल जतन करा" },
+  "settings.err.save": {
+    en: "Couldn't save your changes. Try again.",
+    hi: "आपके बदलाव सहेजे नहीं जा सके। फिर कोशिश करें।",
+    mr: "तुमचे बदल जतन करता आले नाहीत. पुन्हा प्रयत्न करा.",
+  },
+
+  // ── Counters page ──────────────────────────────────────────────────
+  "counters.title": { en: "Counters", hi: "काउंटर", mr: "काउंटर" },
+  "counters.intro": {
+    en: "Each counter can serve customers independently — add one per chair, staff member, or service desk. Restrict a counter to specific services if it can't do everything (e.g. a massage table); leave it unrestricted to let it take anyone.",
+    hi: "हर काउंटर स्वतंत्र रूप से ग्राहकों को सेवा दे सकता है — हर कुर्सी, स्टाफ़ सदस्य या सर्विस डेस्क के लिए एक जोड़ें। अगर कोई काउंटर सब कुछ नहीं कर सकता (जैसे मसाज टेबल) तो उसे चुनी हुई सेवाओं तक सीमित करें; किसी को भी लेने देने के लिए उसे बिना सीमा के रहने दें।",
+    mr: "प्रत्येक काउंटर स्वतंत्रपणे ग्राहकांना सेवा देऊ शकतो — प्रत्येक खुर्ची, कर्मचारी किंवा सर्व्हिस डेस्कसाठी एक जोडा. एखादा काउंटर सर्व काही करू शकत नसेल (उदा. मसाज टेबल) तर त्याला ठराविक सेवांपुरते मर्यादित करा; कुणालाही घेऊ देण्यासाठी तो मर्यादेशिवाय ठेवा.",
+  },
+  "counters.label": { en: "Counter label", hi: "काउंटर का नाम", mr: "काउंटरचे नाव" },
+  "counters.placeholder": { en: "e.g. Chair 2", hi: "जैसे कुर्सी 2", mr: "उदा. खुर्ची 2" },
+  "counters.none": { en: "No counters yet.", hi: "अभी कोई काउंटर नहीं।", mr: "अजून कोणताही काउंटर नाही." },
+  "counters.disable": { en: "Disable", hi: "बंद करें", mr: "बंद करा" },
+  "counters.enable": { en: "Enable", hi: "चालू करें", mr: "चालू करा" },
+  "counters.remove": { en: "Remove", hi: "हटाएँ", mr: "काढा" },
+  "counters.unrestricted": {
+    en: "Unrestricted — can serve any ticket.",
+    hi: "बिना सीमा — किसी भी टिकट को सेवा दे सकता है।",
+    mr: "मर्यादेशिवाय — कोणत्याही तिकिटाला सेवा देऊ शकतो.",
+  },
+  "counters.restricted": {
+    en: "Restricted to the highlighted services above.",
+    hi: "ऊपर चुनी हुई सेवाओं तक सीमित।",
+    mr: "वर निवडलेल्या सेवांपुरता मर्यादित.",
+  },
+  "counters.err.add": { en: "Couldn't add that counter.", hi: "वह काउंटर जोड़ा नहीं जा सका।", mr: "तो काउंटर जोडता आला नाही." },
+  "counters.err.update": { en: "Couldn't update that counter.", hi: "वह काउंटर बदला नहीं जा सका।", mr: "तो काउंटर बदलता आला नाही." },
+  "counters.err.remove": { en: "Couldn't remove that counter.", hi: "वह काउंटर हटाया नहीं जा सका।", mr: "तो काउंटर काढता आला नाही." },
+
+  // ── Services page ──────────────────────────────────────────────────
+  "services.title": { en: "Services", hi: "सेवाएँ", mr: "सेवा" },
+  "services.intro": {
+    en: "Customers pick from this list when they scan your QR poster — estimated minutes drive their wait-time estimate until enough real tickets come through to learn your actual pace. Leave this empty to keep a single, no-selection queue.",
+    hi: "आपका QR पोस्टर स्कैन करने पर ग्राहक इसी सूची से चुनते हैं — जब तक काफ़ी असली टिकट आकर आपकी असली गति न सिखा दें, अनुमानित मिनट ही उनके इंतज़ार का अनुमान तय करते हैं। चुनाव-रहित एक ही कतार रखने के लिए इसे खाली छोड़ें।",
+    mr: "तुमचे QR पोस्टर स्कॅन केल्यावर ग्राहक याच यादीतून निवड करतात — तुमचा खरा वेग शिकण्याइतकी खरी तिकिटे येईपर्यंत अंदाजित मिनिटे त्यांच्या प्रतीक्षेचा अंदाज ठरवतात. निवड नसलेली एकच रांग ठेवण्यासाठी ही यादी रिकामी ठेवा.",
+  },
+  "services.name": { en: "Service name", hi: "सेवा का नाम", mr: "सेवेचे नाव" },
+  "services.est": { en: "Est. minutes", hi: "अनुमानित मिनट", mr: "अंदाजित मिनिटे" },
+  "services.none": { en: "No services yet.", hi: "अभी कोई सेवा नहीं।", mr: "अजून कोणतीही सेवा नाही." },
+  "services.archived": { en: "Archived", hi: "संग्रहीत", mr: "संग्रहित" },
+  "services.archive": { en: "Archive", hi: "संग्रहीत करें", mr: "संग्रहित करा" },
+  "services.restore": { en: "Restore", hi: "वापस लाएँ", mr: "परत आणा" },
+  "services.delete": { en: "Delete", hi: "मिटाएँ", mr: "हटवा" },
+  "services.err.add": { en: "Couldn't add that service.", hi: "वह सेवा जोड़ी नहीं जा सकी।", mr: "ती सेवा जोडता आली नाही." },
+  "services.err.update": { en: "Couldn't update that service.", hi: "वह सेवा बदली नहीं जा सकी।", mr: "ती सेवा बदलता आली नाही." },
+  "services.err.remove": { en: "Couldn't remove that service.", hi: "वह सेवा हटाई नहीं जा सकी।", mr: "ती सेवा काढता आली नाही." },
+
+  // ── Poster page ────────────────────────────────────────────────────
+  "poster.print": { en: "Print poster", hi: "पोस्टर प्रिंट करें", mr: "पोस्टर प्रिंट करा" },
+  "poster.scan": { en: "Scan to join the line", hi: "लाइन में जुड़ने के लिए स्कैन करें", mr: "रांगेत सामील होण्यासाठी स्कॅन करा" },
+  "poster.copied": { en: "Link copied", hi: "लिंक कॉपी हो गया", mr: "लिंक कॉपी झाली" },
+  "poster.copy": { en: "Copy link", hi: "लिंक कॉपी करें", mr: "लिंक कॉपी करा" },
+  "poster.instructions": {
+    en: "Point your phone's camera at this code to get your ticket. No app, no login.",
+    hi: "अपना टिकट पाने के लिए अपने फ़ोन का कैमरा इस कोड पर रखें। न ऐप, न लॉगिन।",
+    mr: "तिकीट मिळवण्यासाठी तुमच्या फोनचा कॅमेरा या कोडवर धरा. अ‍ॅप नाही, लॉगिन नाही.",
+  },
+  "poster.notFound": {
+    en: "We couldn't find that business.",
+    hi: "हमें वह व्यवसाय नहीं मिला।",
+    mr: "तो व्यवसाय आम्हाला सापडला नाही.",
+  },
+} satisfies Record<string, Message>;

@@ -7,6 +7,7 @@ import { Field } from "@/components/Field";
 import { Button } from "@/components/Button";
 import { ApiError, api } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
+import type { MessageKey } from "@/i18n/translate";
 import { useSession } from "@/lib/supabase/useSession";
 import {
   clearPendingBusiness,
@@ -14,6 +15,9 @@ import {
   readPendingBusinessFromUser,
   savePendingBusiness,
 } from "@/lib/pendingBusiness";
+import { QueueSettingsFields } from "@/components/QueueSettingsFields";
+import { useT } from "@/i18n/LocaleProvider";
+import { describeApiError } from "@/i18n/apiErrors";
 import { BUSINESS_CATEGORIES } from "@/lib/constants";
 import type { BusinessCreateInput } from "@/lib/types";
 
@@ -31,6 +35,7 @@ const DEFAULTS: BusinessCreateInput = {
 
 export default function SignupPage() {
   const router = useRouter();
+  const t = useT();
   const { session, loading: sessionLoading } = useSession();
   const [form, setForm] = useState<BusinessCreateInput>(DEFAULTS);
   const [password, setPassword] = useState("");
@@ -81,7 +86,7 @@ export default function SignupPage() {
                 session.access_token,
               );
               clearPendingBusiness();
-              if (active) router.replace(`/dashboard/${business.id}`);
+              if (active) router.replace(`/dashboard/${business.id}?welcome=1`);
               return;
             } catch (createErr) {
               if (createErr instanceof ApiError && createErr.status === 401) {
@@ -125,22 +130,18 @@ export default function SignupPage() {
     if (session) {
       try {
         const business = await api.createBusiness(cleanForm, session.access_token);
-        router.push(`/dashboard/${business.id}`);
+        router.push(`/dashboard/${business.id}?welcome=1`);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
           // Stale/invalid session (e.g. the account behind it is gone) —
           // sign out so this becomes a normal logged-out signup instead of
           // a dead end, and let the user submit again as a new account.
           await createClient().auth.signOut();
-          setError("Your session had expired. Please sign up again.");
+          setError(t("signup.err.expired"));
           setSubmitting(false);
           return;
         }
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : "Couldn't set up your business. Check that the backend is running and try again.",
-        );
+        setError(describeApiError(err, t, "signup.err.setup"));
         setSubmitting(false);
       }
       return;
@@ -148,7 +149,7 @@ export default function SignupPage() {
 
     const supabase = createClient();
     if (!supabase) {
-      setError("Supabase client is not configured. Check your environment settings.");
+      setError(t("login.err.notConfigured"));
       setSubmitting(false);
       return;
     }
@@ -178,9 +179,7 @@ export default function SignupPage() {
     // for a shop that already exists, which is exactly the duplicate-signup
     // bug this guards against.
     if (data.user && data.user.identities && data.user.identities.length === 0) {
-      setError(
-        "An account with this email already exists. Log in instead.",
-      );
+      setError(t("signup.err.exists"));
       setSubmitting(false);
       return;
     }
@@ -194,13 +193,9 @@ export default function SignupPage() {
 
     try {
       const business = await api.createBusiness(cleanForm, data.session.access_token);
-      router.push(`/dashboard/${business.id}`);
+      router.push(`/dashboard/${business.id}?welcome=1`);
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Your account was created, but we couldn't set up your business. Check that the backend is running and try logging in.",
-      );
+      setError(describeApiError(err, t, "signup.err.accountCreated"));
       setSubmitting(false);
     }
   }
@@ -208,7 +203,7 @@ export default function SignupPage() {
   if (checkingExisting) {
     return (
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="text-[0.9375rem] text-ink-soft">One moment…</p>
+        <p className="text-[0.9375rem] text-ink-soft">{t("common.oneMoment")}</p>
       </div>
     );
   }
@@ -217,11 +212,10 @@ export default function SignupPage() {
     return (
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col items-center justify-center px-6 py-16 text-center">
         <h1 className="font-display text-2xl font-[500] text-ink">
-          Check your email
+          {t("signup.checkEmail.title")}
         </h1>
         <p className="mt-3 text-[0.9375rem] leading-[1.55] text-ink-soft">
-          We sent a confirmation link to {form.contact_email}. Confirm your
-          address, then come back and log in to finish setting up your shop.
+          {t("signup.checkEmail.body", { email: form.contact_email })}
         </p>
       </div>
     );
@@ -230,26 +224,28 @@ export default function SignupPage() {
   return (
     <div className="mx-auto w-full max-w-[560px] px-6 py-16 sm:px-10">
       <h1 className="font-display text-3xl font-[500] tracking-[-0.01em] text-ink">
-        Set up your shop
+        {t("signup.title")}
       </h1>
       <p className="mt-3 text-[0.9375rem] leading-[1.55] text-ink-soft">
-        Two minutes, and you&apos;ll have a QR poster ready to print. You can
-        change every setting here later.
+        {t("signup.subtitle")}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-6">
+        <h2 className="font-display text-xl font-[500] tracking-[-0.01em] text-ink">
+          {t("signup.section.shop")}
+        </h2>
         <Field
-          label="Business name"
+          label={t("signup.name")}
           name="name"
           required
           value={form.name}
           onChange={(e) => update("name", e.target.value)}
-          placeholder="Ruby Nails & Spa"
+          placeholder={t("signup.namePlaceholder")}
         />
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[0.8125rem] font-semibold tracking-[0.01em] text-ink">
-            Category
+            {t("common.categoryLabel")}
           </span>
           <select
             value={form.category}
@@ -258,14 +254,14 @@ export default function SignupPage() {
           >
             {BUSINESS_CATEGORIES.map((category) => (
               <option key={category} value={category}>
-                {category}
+                {t(`category.${category}` as MessageKey)}
               </option>
             ))}
           </select>
         </label>
 
         <Field
-          label="Contact email"
+          label={t("signup.email")}
           name="contact_email"
           type="email"
           required
@@ -276,99 +272,48 @@ export default function SignupPage() {
 
         {session ? null : (
           <Field
-            label="Password"
+            label={t("signup.password")}
             name="password"
             type="password"
             required
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 6 characters"
+            placeholder={t("signup.passwordPlaceholder")}
           />
         )}
 
-        <Field
-          label="Contact phone (optional)"
-          name="contact_phone"
-          type="tel"
-          value={form.contact_phone}
-          onChange={(e) => update("contact_phone", e.target.value)}
-          placeholder="+91 98765 43210"
-        />
-
-        <div className="grid grid-cols-2 gap-6">
+        <div>
           <Field
-            label="Grace timer (minutes)"
-            name="grace_timer_minutes"
-            type="number"
-            min={1}
-            max={60}
-            required
-            value={form.grace_timer_minutes}
-            onChange={(e) =>
-              update("grace_timer_minutes", Number(e.target.value))
-            }
+            label={t("signup.phone")}
+            name="contact_phone"
+            type="tel"
+            value={form.contact_phone}
+            onChange={(e) => update("contact_phone", e.target.value)}
+            placeholder="+91 98765 43210"
           />
-          <Field
-            label="Hold window (minutes)"
-            name="hold_window_minutes"
-            type="number"
-            min={1}
-            max={120}
-            required
-            value={form.hold_window_minutes}
-            onChange={(e) =>
-              update("hold_window_minutes", Number(e.target.value))
-            }
-          />
-          <Field
-            label="Counters to start with"
-            name="active_counters"
-            type="number"
-            min={1}
-            max={20}
-            required
-            value={form.active_counters}
-            onChange={(e) => update("active_counters", Number(e.target.value))}
-          />
-          <Field
-            label="Default service time (min)"
-            name="default_service_time_minutes"
-            type="number"
-            min={1}
-            max={180}
-            required
-            value={form.default_service_time_minutes}
-            onChange={(e) =>
-              update("default_service_time_minutes", Number(e.target.value))
-            }
-          />
-          <Field
-            label={'"Almost up" alert (positions ahead)'}
-            name="almost_up_threshold"
-            type="number"
-            min={0}
-            max={20}
-            required
-            value={form.almost_up_threshold}
-            onChange={(e) =>
-              update("almost_up_threshold", Number(e.target.value))
-            }
-          />
+          <p className="mt-1.5 text-[0.75rem] text-ink-soft">
+            {t("signup.phoneHelp")}
+          </p>
         </div>
+
+        <QueueSettingsFields
+          values={form}
+          onChange={(key, value) => update(key, value)}
+        />
 
         {error ? (
           <p className="text-[0.9375rem] text-terracotta">{error}</p>
         ) : null}
 
         <Button type="submit" variant="primary" disabled={submitting}>
-          {submitting ? "Creating your queue…" : "Create my queue"}
+          {submitting ? t("signup.submitting") : t("signup.submit")}
         </Button>
 
         <p className="text-center text-sm text-ink-soft">
-          Already have a shop?{" "}
+          {t("signup.haveShop")}{" "}
           <Link href="/login" className="font-semibold text-ink underline">
-            Log in
+            {t("signup.login")}
           </Link>
         </p>
       </form>

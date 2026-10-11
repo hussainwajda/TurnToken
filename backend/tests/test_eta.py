@@ -29,10 +29,10 @@ def test_counter_busy_until_is_zero_for_idle_counter():
     assert eta.counter_busy_until_minutes(None, None, 10, {}) == 0.0
 
 
-def test_counter_busy_until_never_goes_negative_past_expected_finish():
+def test_counter_busy_until_keeps_minimum_when_customer_overruns():
     services = [{"service_id": "haircut", "estimated_minutes": 10}]
     called_20_minutes_ago = "2000-01-01T00:00:00+00:00"
-    assert eta.counter_busy_until_minutes(services, called_20_minutes_ago, 10, {}) == 0.0
+    assert eta.counter_busy_until_minutes(services, called_20_minutes_ago, 10, {}) == eta.MIN_OVERRUN_REMAINING_MINUTES
 
 
 def test_simulate_wait_minutes_picks_the_soonest_free_counter():

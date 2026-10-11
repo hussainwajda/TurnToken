@@ -1,3 +1,5 @@
+import type { TFunction } from "@/i18n/translate";
+
 /**
  * wa.me deep links, per PRD section 6.5's free-tier notification channel.
  *
@@ -19,9 +21,15 @@ export function buildWhatsAppLink(phone: string, message: string): string | null
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
-export function tokenNotifyMessage(businessName: string, position: number): string {
-  return (
-    `Hi ${businessName}! I'm ticket #${String(position).padStart(3, "0")}. ` +
-    `Please notify me on WhatsApp when it's almost my turn or when I'm called.`
-  );
+/** The pre-filled message text itself lives in the i18n dictionary
+ * (`wa.message`) so it goes out in the customer's language. */
+export function tokenNotifyMessage(
+  t: TFunction,
+  businessName: string,
+  position: number,
+): string {
+  return t("wa.message", {
+    business: businessName,
+    number: String(position).padStart(3, "0"),
+  });
 }

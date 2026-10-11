@@ -28,6 +28,13 @@ from datetime import datetime, timezone
 from supabase import Client
 
 ROLLING_WINDOW = 12
+# A real Called-to-Done sample below this fraction of the catalog estimate is
+# almost certainly a mis-click or a test (called and instantly marked done);
+# letting it through drags the average to ~0 and every ETA with it.
+MIN_SAMPLE_FRACTION = 0.25
+# While a counter is occupied the next customer must wait at least this long,
+# even if the current customer has overrun their expected time.
+MIN_OVERRUN_REMAINING_MINUTES = 1.0
 
 
 def _elapsed_minutes(since: str) -> float:
@@ -86,10 +93,12 @@ def compute_service_rolling_averages(supabase: Client, business_id: str) -> dict
             if not service_id:
                 continue
             weight = (row["estimated_minutes"] / weight_total) if weight_total else (1 / len(rows))
-            samples.setdefault(service_id, []).append(duration * weight)
+            sample = duration * weight
+            sample = max(sample, row["estimated_minutes"] * MIN_SAMPLE_FRACTION)
+            samples.setdefault(service_id, []).append(sample)
 
     return {
-        service_id: sum(values[-ROLLING_WINDOW:]) / len(values[-ROLLING_WINDOW:])
+        service_id: sum(values[:ROLLING_WINDOW]) / len(values[:ROLLING_WINDOW])
         for service_id, values in samples.items()
         if values
     }
@@ -126,7 +135,9 @@ def counter_busy_until_minutes(
         current_token_services, default_service_time_minutes, rolling_averages
     )
     remaining = expected - _elapsed_minutes(called_at)
-    return max(0.0, remaining)
+    # Overrunning customers are still occupying the counter, so never report
+    # 0 for them — that made the next person's wait show "0 min".
+    return max(MIN_OVERRUN_REMAINING_MINUTES, remaining)
 
 
 def simulate_wait_minutes(

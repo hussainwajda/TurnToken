@@ -27,14 +27,19 @@
   --color-ink-soft: var(--color-ink-soft);
   --color-line: var(--color-line);
 
-  --font-display: var(--font-fraunces);
-  --font-body: var(--font-manrope);
+  --font-display: var(--font-fraunces), var(--font-devanagari);
+  --font-body: var(--font-manrope), var(--font-devanagari);
 
   --shadow-ticket: var(--shadow-ticket);
 }
 
 body {
   font-family: var(--font-body);
+}
+
+/* Devanagari needs more vertical room than the tight Latin display leading. */
+html:not([lang="en"]) :is(h1, h2, h3) {
+  line-height: 1.3 !important;
 }
 
 ::selection {

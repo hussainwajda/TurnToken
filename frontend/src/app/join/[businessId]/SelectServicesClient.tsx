@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Button } from "@/components/Button";
 import { api } from "@/lib/api";
 import type { Service } from "@/lib/types";
-import { JoinError } from "./page";
+import { useT } from "@/i18n/LocaleProvider";
+import { JoinError } from "./JoinError";
 
 export function SelectServicesClient({
   businessId,
@@ -15,6 +16,7 @@ export function SelectServicesClient({
   services: Service[];
 }) {
   const router = useRouter();
+  const t = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -49,11 +51,10 @@ export function SelectServicesClient({
   return (
     <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col justify-center px-6 py-16">
       <h1 className="font-display text-2xl font-[500] text-ink">
-        What do you need today?
+        {t("join.title")}
       </h1>
       <p className="mt-2 text-[0.9375rem] leading-[1.55] text-ink-soft">
-        Pick everything you&apos;d like done in one visit — we&apos;ll line
-        you up for all of it at once.
+        {t("join.subtitle")}
       </p>
 
       <div className="mt-8 flex flex-col gap-3">
@@ -78,7 +79,7 @@ export function SelectServicesClient({
                 </span>
               </span>
               <span className="text-[0.8125rem] text-ink-soft">
-                ~{service.estimated_minutes} min
+                {t("join.approxMin", { n: service.estimated_minutes })}
               </span>
             </label>
           );
@@ -92,10 +93,10 @@ export function SelectServicesClient({
         onClick={() => join(Array.from(selected))}
       >
         {submitting
-          ? "Joining…"
+          ? t("join.joining")
           : selected.size === 0
-            ? "Select a service to continue"
-            : `Join queue · ~${totalMinutes} min`}
+            ? t("join.selectOne")
+            : t("join.joinQueue", { n: totalMinutes })}
       </Button>
 
       <Button
@@ -104,7 +105,7 @@ export function SelectServicesClient({
         disabled={submitting}
         onClick={() => join([])}
       >
-        Not sure — just add me to the line
+        {t("join.notSure")}
       </Button>
     </div>
   );

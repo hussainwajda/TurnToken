@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Field } from "@/components/Field";
 import { Button } from "@/components/Button";
+import { RedirectIfSignedIn } from "@/components/RedirectIfSignedIn";
+import { useT } from "@/i18n/LocaleProvider";
+import { describeApiError } from "@/i18n/apiErrors";
 import { ApiError, api } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,6 +18,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -27,7 +31,7 @@ export default function LoginPage() {
 
     const supabase = createClient();
     if (!supabase) {
-      setError("Supabase client is not configured. Check your environment settings.");
+      setError(t("login.err.notConfigured"));
       setSubmitting(false);
       return;
     }
@@ -37,7 +41,7 @@ export default function LoginPage() {
     });
 
     if (authError || !data.session) {
-      setError(authError?.message ?? "Could not log in.");
+      setError(authError?.message ?? t("login.err.generic"));
       setSubmitting(false);
       return;
     }
@@ -52,11 +56,7 @@ export default function LoginPage() {
       // a real problem — surfacing it here beats silently trying to create
       // a second business from a stale pending draft.
       if (!(err instanceof ApiError) || err.status !== 404) {
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : "Logged in, but couldn't reach the backend. Try again in a moment.",
-        );
+        setError(describeApiError(err, t, "login.err.backend"));
         setSubmitting(false);
         return;
       }
@@ -80,27 +80,24 @@ export default function LoginPage() {
         // this same flow — the stale draft is no longer actionable.
         clearPendingBusiness();
       }
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Your account is confirmed, but we couldn't finish setting up your business. Check that the backend is running and try again.",
-      );
+      setError(describeApiError(err, t, "login.err.finishSetup"));
       setSubmitting(false);
     }
   }
 
   return (
     <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center px-6 py-16 sm:px-10">
+      <RedirectIfSignedIn />
       <h1 className="font-display text-3xl font-[500] tracking-[-0.01em] text-ink">
-        Log in
+        {t("login.title")}
       </h1>
       <p className="mt-3 text-[0.9375rem] leading-[1.55] text-ink-soft">
-        Get back to your queue dashboard.
+        {t("login.subtitle")}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-6">
         <Field
-          label="Email"
+          label={t("login.email")}
           name="email"
           type="email"
           required
@@ -108,7 +105,7 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
         />
         <Field
-          label="Password"
+          label={t("login.password")}
           name="password"
           type="password"
           required
@@ -121,13 +118,13 @@ export default function LoginPage() {
         ) : null}
 
         <Button type="submit" variant="primary" disabled={submitting}>
-          {submitting ? "Logging in…" : "Log in"}
+          {submitting ? t("login.submitting") : t("login.submit")}
         </Button>
 
         <p className="text-center text-sm text-ink-soft">
-          New here?{" "}
+          {t("login.newHere")}{" "}
           <Link href="/signup" className="font-semibold text-ink underline">
-            Set up your shop
+            {t("login.setup")}
           </Link>
         </p>
       </form>

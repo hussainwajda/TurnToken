@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
-import { ApiError, api } from "@/lib/api";
+import { useT } from "@/i18n/LocaleProvider";
+import { describeApiError } from "@/i18n/apiErrors";
+import { api } from "@/lib/api";
 import { useOwnerGuard } from "@/lib/useOwnerGuard";
 import type { Business, Service } from "@/lib/types";
 
 export function ServicesClient({ business }: { business: Business }) {
+  const t = useT();
   const { session, sessionLoading, isOwner, accessToken } = useOwnerGuard(business);
   const [services, setServices] = useState<Service[] | null>(null);
   const [name, setName] = useState("");
@@ -41,7 +44,7 @@ export function ServicesClient({ business }: { business: Business }) {
       setMinutes(10);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't add that service.");
+      setError(describeApiError(err, t, "services.err.add"));
     } finally {
       setSubmitting(false);
     }
@@ -55,7 +58,7 @@ export function ServicesClient({ business }: { business: Business }) {
       await api.updateService(business.id, service.id, { active: !service.active }, accessToken);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't update that service.");
+      setError(describeApiError(err, t, "services.err.update"));
     } finally {
       setBusyId(null);
     }
@@ -69,7 +72,7 @@ export function ServicesClient({ business }: { business: Business }) {
       await api.updateService(business.id, service.id, { estimated_minutes: value }, accessToken);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't update that service.");
+      setError(describeApiError(err, t, "services.err.update"));
     } finally {
       setBusyId(null);
     }
@@ -83,7 +86,7 @@ export function ServicesClient({ business }: { business: Business }) {
       await api.deleteService(business.id, service.id, accessToken);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't remove that service.");
+      setError(describeApiError(err, t, "services.err.remove"));
     } finally {
       setBusyId(null);
     }
@@ -92,7 +95,7 @@ export function ServicesClient({ business }: { business: Business }) {
   if (sessionLoading) {
     return (
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="text-[0.9375rem] text-ink-soft">Checking your session…</p>
+        <p className="text-[0.9375rem] text-ink-soft">{t("common.checkingSession")}</p>
       </div>
     );
   }
@@ -103,7 +106,7 @@ export function ServicesClient({ business }: { business: Business }) {
     return (
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col items-center justify-center px-6 py-16 text-center">
         <h1 className="font-display text-2xl font-[500] text-ink">
-          This isn&apos;t your shop
+          {t("common.notYourShop")}
         </h1>
       </div>
     );
@@ -115,22 +118,19 @@ export function ServicesClient({ business }: { business: Business }) {
         href={`/dashboard/${business.id}`}
         className="text-sm text-ink-soft hover:text-ink"
       >
-        ← Back to dashboard
+        {t("common.back")}
       </Link>
 
       <h1 className="mt-4 font-display text-3xl font-[500] tracking-[-0.01em] text-ink">
-        Services
+        {t("services.title")}
       </h1>
       <p className="mt-3 text-[0.9375rem] leading-[1.55] text-ink-soft">
-        Customers pick from this list when they scan your QR poster —
-        estimated minutes drive their wait-time estimate until enough real
-        tickets come through to learn your actual pace. Leave this empty to
-        keep a single, no-selection queue.
+        {t("services.intro")}
       </p>
 
       <form onSubmit={handleCreate} className="mt-8 flex items-end gap-3">
         <Field
-          label="Service name"
+          label={t("services.name")}
           name="name"
           required
           value={name}
@@ -138,7 +138,7 @@ export function ServicesClient({ business }: { business: Business }) {
           className="flex-1"
         />
         <Field
-          label="Est. minutes"
+          label={t("services.est")}
           name="estimated_minutes"
           type="number"
           min={1}
@@ -149,16 +149,16 @@ export function ServicesClient({ business }: { business: Business }) {
           className="w-28"
         />
         <Button type="submit" variant="primary" disabled={submitting || !name.trim()}>
-          {submitting ? "Adding…" : "Add"}
+          {submitting ? t("common.adding") : t("common.add")}
         </Button>
       </form>
       {error ? <p className="mt-2 text-[0.8125rem] text-terracotta">{error}</p> : null}
 
       <div className="mt-8 flex flex-col">
         {services === null ? (
-          <p className="text-sm text-ink-soft">Loading…</p>
+          <p className="text-sm text-ink-soft">{t("common.loading")}</p>
         ) : services.length === 0 ? (
-          <p className="text-sm text-ink-soft">No services yet.</p>
+          <p className="text-sm text-ink-soft">{t("services.none")}</p>
         ) : (
           services.map((service) => (
             <div
@@ -170,7 +170,7 @@ export function ServicesClient({ business }: { business: Business }) {
               <div>
                 <p className="text-[0.9375rem] font-medium text-ink">{service.name}</p>
                 {!service.active ? (
-                  <p className="text-[0.75rem] text-ink-soft">Archived</p>
+                  <p className="text-[0.75rem] text-ink-soft">{t("services.archived")}</p>
                 ) : null}
               </div>
               <div className="flex items-center gap-3">
@@ -182,14 +182,14 @@ export function ServicesClient({ business }: { business: Business }) {
                   onBlur={(e) => updateMinutes(service, Number(e.target.value))}
                   className="w-20 rounded-[8px] border border-line bg-cream px-2 py-1.5 text-sm text-ink focus:outline-none focus:border-pine focus:ring-2 focus:ring-pine/30"
                 />
-                <span className="text-[0.75rem] text-ink-soft">min</span>
+                <span className="text-[0.75rem] text-ink-soft">{t("common.minAbbr")}</span>
                 <Button
                   variant="ghost"
                   className="px-3 py-1.5 text-xs"
                   disabled={busyId === service.id}
                   onClick={() => toggleActive(service)}
                 >
-                  {service.active ? "Archive" : "Restore"}
+                  {service.active ? t("services.archive") : t("services.restore")}
                 </Button>
                 <Button
                   variant="danger"
@@ -197,7 +197,7 @@ export function ServicesClient({ business }: { business: Business }) {
                   disabled={busyId === service.id}
                   onClick={() => remove(service)}
                 >
-                  Delete
+                  {t("services.delete")}
                 </Button>
               </div>
             </div>

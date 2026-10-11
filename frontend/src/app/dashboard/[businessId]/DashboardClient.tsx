@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
-import { ApiError, api } from "@/lib/api";
+import { GuidedTour, type TourStep } from "@/components/GuidedTour";
+import { useT } from "@/i18n/LocaleProvider";
+import { describeApiError } from "@/i18n/apiErrors";
+import type { MessageKey } from "@/i18n/translate";
+import { api } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useOwnerGuard } from "@/lib/useOwnerGuard";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
@@ -14,8 +18,22 @@ import type { AnalyticsResponse, Business, CounterState, QueueResponse, Token } 
 // primary update path; this just covers a socket that's silently stuck.
 const POLL_MS = 20000;
 
+const TOUR_STEPS: TourStep[] = [
+  { title: "tour.welcome.title", body: "tour.welcome.body" },
+  { target: "counters", title: "tour.counters.title", body: "tour.counters.body" },
+  { target: "pause", title: "tour.pause.title", body: "tour.pause.body" },
+  { target: "waiting", title: "tour.waiting.title", body: "tour.waiting.body" },
+  { target: "stats", title: "tour.stats.title", body: "tour.stats.body" },
+  { target: "nav-services", title: "tour.services.title", body: "tour.services.body" },
+  { target: "nav-counters", title: "tour.countersPage.title", body: "tour.countersPage.body" },
+  { target: "nav-settings", title: "tour.settings.title", body: "tour.settings.body" },
+  { target: "nav-poster", title: "tour.poster.title", body: "tour.poster.body" },
+  { title: "tour.finish.title", body: "tour.finish.body" },
+];
+
 export function DashboardClient({ business: initialBusiness }: { business: Business }) {
   const router = useRouter();
+  const t = useT();
   const { session, sessionLoading, isOwner, accessToken } = useOwnerGuard(initialBusiness);
   const [business, setBusiness] = useState(initialBusiness);
   const [queue, setQueue] = useState<QueueResponse | null>(null);
@@ -25,6 +43,25 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
   const [busyTokenId, setBusyTokenId] = useState<string | null>(null);
   const [pausing, setPausing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  // Only a freshly created business arrives with ?welcome=1 (see signup and
+  // admin). Show the tour once, then drop the flag so a refresh or a later
+  // login doesn't bring it back. "Take a tour" in the header replays it.
+  useEffect(() => {
+    if (!queueLoaded || !isOwner) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("welcome")) return;
+    params.delete("welcome");
+    const query = params.toString();
+    router.replace(`${window.location.pathname}${query ? `?${query}` : ""}`);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTourOpen(true);
+  }, [queueLoaded, isOwner, router]);
+
+  function closeTour() {
+    setTourOpen(false);
+  }
 
   const refresh = useCallback(async () => {
     if (!accessToken || !isOwner) return;
@@ -59,8 +96,8 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
     router.push("/login");
   }
 
-  function describeError(err: unknown, fallback: string): string {
-    return err instanceof ApiError ? err.message : fallback;
+  function describeError(err: unknown, fallback: MessageKey): string {
+    return describeApiError(err, t, fallback);
   }
 
   async function togglePause() {
@@ -73,7 +110,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
         : await api.pauseBusiness(business.id, accessToken);
       setBusiness(updated);
     } catch (err) {
-      setActionError(describeError(err, "Couldn't update the queue's pause state."));
+      setActionError(describeError(err, "dash.err.pause"));
     } finally {
       setPausing(false);
     }
@@ -87,7 +124,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
       await action(tokenId, accessToken);
       await refresh();
     } catch (err) {
-      setActionError(describeError(err, "That action didn't go through — please try again."));
+      setActionError(describeError(err, "dash.err.action"));
     } finally {
       setBusyTokenId(null);
     }
@@ -103,7 +140,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
       await api.callToken(next.id, counter.id, accessToken);
       await refresh();
     } catch (err) {
-      setActionError(describeError(err, "Couldn't call the next customer — please try again."));
+      setActionError(describeError(err, "dash.err.callNext"));
     } finally {
       setBusyTokenId(null);
     }
@@ -116,7 +153,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
       await api.cancelToken(tokenId);
       await refresh();
     } catch (err) {
-      setActionError(describeError(err, "Couldn't cancel that ticket — please try again."));
+      setActionError(describeError(err, "dash.err.cancel"));
     } finally {
       setBusyTokenId(null);
     }
@@ -125,7 +162,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
   if (sessionLoading) {
     return (
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="text-[0.9375rem] text-ink-soft">Checking your session…</p>
+        <p className="text-[0.9375rem] text-ink-soft">{t("common.checkingSession")}</p>
       </div>
     );
   }
@@ -136,11 +173,10 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
     return (
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col items-center justify-center px-6 py-16 text-center">
         <h1 className="font-display text-2xl font-[500] text-ink">
-          This isn&apos;t your shop
+          {t("common.notYourShop")}
         </h1>
         <p className="mt-3 text-[0.9375rem] leading-[1.55] text-ink-soft">
-          You&apos;re logged in, but this business belongs to a different
-          account.
+          {t("common.notYourShopBody")}
         </p>
       </div>
     );
@@ -164,44 +200,46 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
             href="/admin"
             className="hidden text-sm font-semibold text-ink underline sm:inline"
           >
-            Register another
+            {t("dash.registerAnother")}
           </Link>
-          <Link href={`/dashboard/${business.id}/services`}>
+          <Link href={`/dashboard/${business.id}/services`} data-tour="nav-services">
             <Button variant="ghost" className="text-sm">
-              Services
+              {t("dash.services")}
             </Button>
           </Link>
-          <Link href={`/dashboard/${business.id}/counters`}>
+          <Link href={`/dashboard/${business.id}/counters`} data-tour="nav-counters">
             <Button variant="ghost" className="text-sm">
-              Counters
+              {t("dash.counters")}
             </Button>
           </Link>
-          <Link href={`/dashboard/${business.id}/settings`}>
+          <Link href={`/dashboard/${business.id}/settings`} data-tour="nav-settings">
             <Button variant="ghost" className="text-sm">
-              Settings
+              {t("dash.settings")}
             </Button>
           </Link>
-          <Link href={`/dashboard/${business.id}/poster`}>
+          <Link href={`/dashboard/${business.id}/poster`} data-tour="nav-poster">
             <Button variant="ghost" className="text-sm">
-              View QR poster
+              {t("dash.poster")}
             </Button>
           </Link>
+          <Button variant="ghost" className="text-sm" onClick={() => setTourOpen(true)}>
+            {t("tour.start")}
+          </Button>
           <Button variant="ghost" className="text-sm" onClick={handleLogout}>
-            Log out
+            {t("dash.logout")}
           </Button>
         </div>
       </header>
 
       {business.is_paused ? (
         <p className="mt-6 rounded-[8px] bg-terracotta/10 px-4 py-3 text-sm font-semibold text-terracotta">
-          Your queue is paused — customers can&apos;t join until you resume it.
+          {t("dash.paused")}
         </p>
       ) : null}
 
       {queueError ? (
         <p className="mt-6 rounded-[8px] bg-terracotta/10 px-4 py-3 text-sm font-semibold text-terracotta">
-          Couldn&apos;t reach the server for the latest queue — retrying
-          automatically. What&apos;s shown below may be out of date.
+          {t("dash.serverDown")}
         </p>
       ) : null}
 
@@ -213,7 +251,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
             onClick={() => setActionError(null)}
             className="shrink-0 font-normal underline decoration-terracotta/40 underline-offset-2"
           >
-            Dismiss
+            {t("common.dismiss")}
           </button>
         </p>
       ) : null}
@@ -221,7 +259,8 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_280px]">
         <div>
           <div className="flex items-center justify-between">
-            <SectionHeading>Counters</SectionHeading>
+            <SectionHeading>{t("dash.counters")}</SectionHeading>
+            <span data-tour="pause">
             <Button
               variant="ghost"
               className="px-3 py-1.5 text-xs"
@@ -230,23 +269,36 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
             >
               {business.is_paused
                 ? pausing
-                  ? "Resuming…"
-                  : "Resume queue"
+                  ? t("dash.resuming")
+                  : t("dash.resume")
                 : pausing
-                  ? "Pausing…"
-                  : "Pause queue"}
+                  ? t("dash.pausing")
+                  : t("dash.pause")}
             </Button>
+            </span>
           </div>
 
+          <div data-tour="counters">
           {!queueLoaded ? (
-            <p className="mt-4 text-[0.9375rem] text-ink-soft">Loading counters…</p>
+            <p className="mt-4 text-[0.9375rem] text-ink-soft">{t("dash.loadingCounters")}</p>
           ) : counters.length === 0 ? (
             <p className="mt-4 text-[0.9375rem] text-ink-soft">
-              No counters set up yet.{" "}
-              <Link href={`/dashboard/${business.id}/counters`} className="underline">
-                Add one
-              </Link>{" "}
-              to start calling customers.
+              {t("dash.noCounters", { link: "\u0000" })
+                .split("\u0000")
+                .flatMap((part, index) =>
+                  index === 0
+                    ? [part]
+                    : [
+                        <Link
+                          key="add"
+                          href={`/dashboard/${business.id}/counters`}
+                          className="underline"
+                        >
+                          {t("dash.addOne")}
+                        </Link>,
+                        part,
+                      ],
+                )}
             </p>
           ) : (
             <div className="mt-4 flex flex-col gap-4">
@@ -264,7 +316,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
                         {counter.label}
                         {!counter.active ? (
                           <span className="ml-2 text-xs font-normal text-ink-soft">
-                            (disabled)
+                            {t("common.disabled")}
                           </span>
                         ) : null}
                       </p>
@@ -282,7 +334,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
                               runAction(counter.current_token!.id, api.serveToken)
                             }
                           >
-                            Mark served
+                            {t("dash.markServed")}
                           </Button>
                           <Button
                             variant="danger"
@@ -292,7 +344,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
                               runAction(counter.current_token!.id, api.skipToken)
                             }
                           >
-                            Skip
+                            {t("dash.skip")}
                           </Button>
                         </div>
                       </div>
@@ -305,7 +357,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
                           disabled={!next || business.is_paused || Boolean(busyTokenId)}
                           onClick={() => callNextAt(counter)}
                         >
-                          {next ? "Call next" : "No eligible customer waiting"}
+                          {next ? t("dash.callNext") : t("dash.noEligible")}
                         </Button>
                       </div>
                     ) : null}
@@ -315,14 +367,15 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
             </div>
           )}
 
-          <div className="mt-10">
-            <SectionHeading>Waiting ({waiting.length})</SectionHeading>
+          </div>
+
+          <div className="mt-10" data-tour="waiting">
+            <SectionHeading>{t("dash.waitingCount", { n: waiting.length })}</SectionHeading>
             {!queueLoaded ? (
-              <p className="mt-4 text-[0.9375rem] text-ink-soft">Loading queue…</p>
+              <p className="mt-4 text-[0.9375rem] text-ink-soft">{t("dash.loadingQueue")}</p>
             ) : waiting.length === 0 ? (
               <p className="mt-4 text-[0.9375rem] text-ink-soft">
-                No one is waiting. New tickets will show up here the moment a
-                customer scans your poster.
+                {t("dash.noOneWaiting")}
               </p>
             ) : (
               waiting.map((token) => (
@@ -337,7 +390,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
                         className="px-4 py-2 text-sm"
                         onClick={() => cancelWaiting(token.id)}
                       >
-                        Cancel
+                        {t("dash.cancel")}
                       </Button>
                     ) : null
                   }
@@ -348,7 +401,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
 
           {skipped.length > 0 ? (
             <div className="mt-10">
-              <SectionHeading>Skipped — held for restore</SectionHeading>
+              <SectionHeading>{t("dash.skippedHeading")}</SectionHeading>
               {skipped.map((token) => (
                 <QueueRow
                   key={token.id}
@@ -360,7 +413,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
                       className="px-4 py-2 text-sm"
                       onClick={() => runAction(token.id, api.restoreToken)}
                     >
-                      Restore
+                      {t("dash.restore")}
                     </Button>
                   }
                 />
@@ -369,10 +422,10 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
           ) : null}
         </div>
 
-        <aside className="flex flex-col gap-6">
+        <aside className="flex flex-col gap-6" data-tour="stats">
           <div className="rounded-[12px] bg-cream-panel px-6 py-6">
             <p className="text-[0.8125rem] font-semibold tracking-[0.01em] text-ink-soft">
-              Waiting
+              {t("dash.waiting")}
             </p>
             <p className="mt-1 font-display text-3xl font-[500] tabular-nums text-ink">
               {waiting.length}
@@ -380,29 +433,29 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
           </div>
 
           <div className="rounded-[12px] bg-cream-panel px-6 py-6">
-            <SectionHeading>Today</SectionHeading>
+            <SectionHeading>{t("dash.today")}</SectionHeading>
             {analytics ? (
               <>
                 <dl className="mt-4 flex flex-col gap-4">
-                  <Stat label="Customers served" value={analytics.customers_served} />
+                  <Stat label={t("dash.served")} value={analytics.customers_served} />
                   <Stat
-                    label="Avg. wait"
-                    value={`${analytics.average_wait_minutes} min`}
+                    label={t("dash.avgWait")}
+                    value={t("common.minutesShort", { n: analytics.average_wait_minutes })}
                   />
                   <Stat
-                    label="Peak hour"
+                    label={t("dash.peakHour")}
                     value={
                       analytics.peak_hour === null
                         ? "—"
                         : `${String(analytics.peak_hour).padStart(2, "0")}:00`
                     }
                   />
-                  <Stat label="No-shows" value={analytics.no_show_count} />
+                  <Stat label={t("dash.noShows")} value={analytics.no_show_count} />
                 </dl>
                 {analytics.top_services.length > 0 ? (
                   <div className="mt-5 border-t border-line pt-4">
                     <p className="text-[0.8125rem] font-semibold tracking-[0.01em] text-ink-soft">
-                      Top services
+                      {t("dash.topServices")}
                     </p>
                     <ul className="mt-2 flex flex-col gap-1.5">
                       {analytics.top_services.map((s) => (
@@ -412,7 +465,7 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
                         >
                           <span>{s.service_name}</span>
                           <span className="text-ink-soft">
-                            {s.count} · {s.average_minutes}m avg
+                            {t("dash.avgShort", { count: s.count, n: s.average_minutes })}
                           </span>
                         </li>
                       ))}
@@ -421,11 +474,12 @@ export function DashboardClient({ business: initialBusiness }: { business: Busin
                 ) : null}
               </>
             ) : (
-              <p className="mt-4 text-sm text-ink-soft">Loading…</p>
+              <p className="mt-4 text-sm text-ink-soft">{t("common.loading")}</p>
             )}
           </div>
         </aside>
       </div>
+      {tourOpen ? <GuidedTour steps={TOUR_STEPS} onClose={closeTour} /> : null}
     </div>
   );
 }
@@ -441,6 +495,7 @@ function eligibleWaitingFor(counter: CounterState, waiting: Token[]): Token | un
 }
 
 function TicketSummary({ token }: { token: Token }) {
+  const t = useT();
   return (
     <div className="flex items-center gap-3">
       <span className="font-display text-lg font-[500] tabular-nums text-ink">
@@ -458,7 +513,7 @@ function TicketSummary({ token }: { token: Token }) {
           ))}
         </div>
       ) : (
-        <span className="text-[0.8125rem] text-ink-soft">General</span>
+        <span className="text-[0.8125rem] text-ink-soft">{t("dash.general")}</span>
       )}
     </div>
   );
@@ -492,6 +547,7 @@ function QueueRow({
   actions?: React.ReactNode;
   busy?: boolean;
 }) {
+  const t = useT();
   return (
     <div
       className={`flex items-center justify-between gap-4 border-b border-line py-4 ${busy ? "opacity-50" : ""}`}
@@ -500,7 +556,7 @@ function QueueRow({
       <div className="flex items-center gap-3">
         {token.estimated_wait_minutes !== null ? (
           <span className="text-[0.8125rem] text-ink-soft">
-            ~{Math.max(0, Math.round(token.estimated_wait_minutes))} min
+            ~{t("common.minutesShort", { n: Math.max(0, Math.round(token.estimated_wait_minutes)) })}
           </span>
         ) : null}
         {actions}

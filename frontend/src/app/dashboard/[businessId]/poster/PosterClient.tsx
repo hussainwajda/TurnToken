@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/Button";
+import { useT } from "@/i18n/LocaleProvider";
 import type { Business } from "@/lib/types";
 
 export function PosterClient({ business }: { business: Business }) {
+  const t = useT();
   const [joinUrl, setJoinUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -37,16 +39,16 @@ export function PosterClient({ business }: { business: Business }) {
           href={`/dashboard/${business.id}`}
           className="text-sm text-ink-soft hover:text-ink"
         >
-          &larr; Back to dashboard
+          {t("common.back")}
         </Link>
         <Button variant="primary" onClick={() => window.print()}>
-          Print poster
+          {t("poster.print")}
         </Button>
       </div>
 
       <div className="mt-8 rounded-[20px] border border-line bg-cream-panel px-10 py-14 text-center shadow-ticket print:border-0 print:shadow-none">
         <p className="text-[0.8125rem] font-semibold tracking-[0.01em] text-pine">
-          Scan to join the line
+          {t("poster.scan")}
         </p>
         <h1 className="mt-3 font-display text-3xl font-[500] tracking-[-0.01em] text-ink">
           {business.name}
@@ -65,12 +67,11 @@ export function PosterClient({ business }: { business: Business }) {
           disabled={!joinUrl}
           className="mt-4 text-sm font-semibold text-ink underline decoration-line underline-offset-4 hover:decoration-ink disabled:opacity-50 print:hidden"
         >
-          {copied ? "Link copied" : "Copy link"}
+          {copied ? t("poster.copied") : t("poster.copy")}
         </button>
 
         <p className="mt-8 text-[0.9375rem] leading-[1.55] text-ink-soft">
-          Point your phone&apos;s camera at this code to get your ticket.
-          No app, no login.
+          {t("poster.instructions")}
         </p>
       </div>
     </div>

@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
+import { QueueSettingsFields } from "@/components/QueueSettingsFields";
+import { useT } from "@/i18n/LocaleProvider";
+import { describeApiError } from "@/i18n/apiErrors";
+import type { MessageKey } from "@/i18n/translate";
 import { api } from "@/lib/api";
 import type { BusinessCreateInput } from "@/lib/types";
 import { useSession } from "@/lib/supabase/useSession";
@@ -31,6 +35,7 @@ const DEFAULTS: BusinessCreateInput = {
 
 export default function AdminPage() {
   const router = useRouter();
+  const t = useT();
   const { session, loading } = useSession();
   const [form, setForm] = useState<BusinessCreateInput>(DEFAULTS);
   const [submitting, setSubmitting] = useState(false);
@@ -56,13 +61,9 @@ export default function AdminPage() {
 
     try {
       const business = await api.createBusiness(form, session.access_token);
-      router.push(`/dashboard/${business.id}`);
+      router.push(`/dashboard/${business.id}?welcome=1`);
     } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Could not register this business.",
-      );
+      setError(describeApiError(submitError, t, "register.err"));
       setSubmitting(false);
     }
   }
@@ -74,14 +75,13 @@ export default function AdminPage() {
       <div className="flex items-start justify-between gap-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-pine">
-            Admin
+            {t("register.eyebrow")}
           </p>
           <h1 className="mt-2 font-display text-3xl font-[500] tracking-[-0.01em] text-ink">
-            Register a business
+            {t("register.title")}
           </h1>
           <p className="mt-3 max-w-[560px] text-[0.9375rem] leading-[1.55] text-ink-soft">
-            Create a queue for a new location. You can adjust these settings
-            later from its dashboard.
+            {t("register.subtitle")}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-4 text-sm font-semibold">
@@ -89,13 +89,13 @@ export default function AdminPage() {
             href="/super-admin"
             className="text-pine underline decoration-pine/40 hover:decoration-pine"
           >
-            Super Admin Hub &rarr;
+            {t("register.superAdmin")}
           </Link>
           <Link
             href="/"
             className="text-ink underline"
           >
-            Home
+            {t("register.home")}
           </Link>
         </div>
       </div>
@@ -103,17 +103,17 @@ export default function AdminPage() {
       <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-6">
         <div className="grid gap-6 sm:grid-cols-2">
           <Field
-            label="Business name"
+            label={t("signup.name")}
             name="name"
             required
             value={form.name}
             onChange={(event) => update("name", event.target.value)}
-            placeholder="Ruby Nails & Spa"
+            placeholder={t("signup.namePlaceholder")}
           />
 
           <label className="flex flex-col gap-1.5">
             <span className="text-[0.8125rem] font-semibold tracking-[0.01em] text-ink">
-              Category
+              {t("common.categoryLabel")}
             </span>
             <select
               value={form.category}
@@ -122,7 +122,7 @@ export default function AdminPage() {
             >
               {CATEGORIES.map((category) => (
                 <option key={category} value={category}>
-                  {category}
+                  {t(`category.${category}` as MessageKey)}
                 </option>
               ))}
             </select>
@@ -131,7 +131,7 @@ export default function AdminPage() {
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Field
-            label="Contact email"
+            label={t("signup.email")}
             name="contact_email"
             type="email"
             required
@@ -140,7 +140,7 @@ export default function AdminPage() {
             placeholder="owner@rubynails.com"
           />
           <Field
-            label="Contact phone (optional)"
+            label={t("signup.phone")}
             name="contact_phone"
             type="tel"
             value={form.contact_phone}
@@ -150,80 +150,16 @@ export default function AdminPage() {
         </div>
 
         <div className="border-t border-line pt-6">
-          <h2 className="font-display text-xl font-[500] text-ink">
-            Queue settings
-          </h2>
-          <div className="mt-5 grid grid-cols-2 gap-6">
-            <Field
-              label="Grace timer (minutes)"
-              name="grace_timer_minutes"
-              type="number"
-              min={1}
-              max={60}
-              required
-              value={form.grace_timer_minutes}
-              onChange={(event) =>
-                update("grace_timer_minutes", Number(event.target.value))
-              }
-            />
-            <Field
-              label="Hold window (minutes)"
-              name="hold_window_minutes"
-              type="number"
-              min={1}
-              max={120}
-              required
-              value={form.hold_window_minutes}
-              onChange={(event) =>
-                update("hold_window_minutes", Number(event.target.value))
-              }
-            />
-            <Field
-              label="Active counters"
-              name="active_counters"
-              type="number"
-              min={1}
-              max={20}
-              required
-              value={form.active_counters}
-              onChange={(event) =>
-                update("active_counters", Number(event.target.value))
-              }
-            />
-            <Field
-              label="Default service time (min)"
-              name="default_service_time_minutes"
-              type="number"
-              min={1}
-              max={180}
-              required
-              value={form.default_service_time_minutes}
-              onChange={(event) =>
-                update(
-                  "default_service_time_minutes",
-                  Number(event.target.value),
-                )
-              }
-            />
-            <Field
-              label="Almost up alert (positions ahead)"
-              name="almost_up_threshold"
-              type="number"
-              min={0}
-              max={20}
-              required
-              value={form.almost_up_threshold}
-              onChange={(event) =>
-                update("almost_up_threshold", Number(event.target.value))
-              }
-            />
-          </div>
+          <QueueSettingsFields
+            values={form}
+            onChange={(key, value) => update(key, value)}
+          />
         </div>
 
         {error ? <p className="text-[0.9375rem] text-terracotta">{error}</p> : null}
 
         <Button type="submit" variant="primary" disabled={submitting}>
-          {submitting ? "Registering business..." : "Register business"}
+          {submitting ? t("register.submitting") : t("register.submit")}
         </Button>
       </form>
     </div>
