@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useT } from "@/i18n/LocaleProvider";
 import type { MessageKey } from "@/i18n/translate";
@@ -64,32 +64,39 @@ export function GuidedTour({
   const step = available[index];
   const isLast = index === available.length - 1;
 
-  const measure = useCallback(() => {
-    setViewport({ w: window.innerWidth, h: window.innerHeight });
-    setRect(readRect(step?.target));
+  // Bring the target into view when the step changes.
+  useLayoutEffect(() => {
+    if (!step?.target) return;
+    document
+      .querySelector(`[data-tour="${step.target}"]`)
+      ?.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior });
   }, [step]);
 
-  // Bring the target into view first, then measure, then keep tracking.
-  useLayoutEffect(() => {
-    if (!step) return;
-    if (step.target) {
-      document
-        .querySelector(`[data-tour="${step.target}"]`)
-        ?.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior });
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    measure();
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
-    return () => {
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+  // Track the target every frame while the tour is open. Layout moves after
+  // the step starts — Hindi/Marathi text wraps differently and the Devanagari
+  // font loads late — so measuring only on scroll/resize leaves the
+  // spotlight pointing at where the element used to be.
+  useEffect(() => {
+    let frame = 0;
+    const tick = () => {
+      const next = readRect(step?.target);
+      setRect((prev) =>
+        prev && next &&
+        prev.top === next.top && prev.left === next.left &&
+        prev.width === next.width && prev.height === next.height
+          ? prev
+          : next,
+      );
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setViewport((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+      const ph = popoverRef.current?.offsetHeight;
+      if (ph) setPopoverH((prev) => (prev === ph ? prev : ph));
+      frame = requestAnimationFrame(tick);
     };
-  }, [step, measure]);
-
-  useLayoutEffect(() => {
-    if (popoverRef.current) setPopoverH(popoverRef.current.offsetHeight);
-  }, [index, viewport.w]);
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [step]);
 
   useEffect(() => {
     nextRef.current?.focus();
